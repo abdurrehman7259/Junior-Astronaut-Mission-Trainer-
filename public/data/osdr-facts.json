@@ -1,5 +1,5 @@
 {
-  "retrievedAt": "2026-11-14T08:51:28.008Z",
+  "retrievedAt": "2026-11-14T17:26:36.172Z",
   "source": "NASA Open Science Data Repository (OSDR)",
   "sourceUrl": "https://osdr.nasa.gov/bio/",
   "notes": "Archived (retrieved 2026-11-14). Searched bone, muscle and radiation using the public OSDR Search API (cgene), including all result pages. Selected two description-evidence-reviewed drafts per topic, preferring explicit flight context and clear topic titles, then numeric accession; sorted by numeric accession. Radiation studies include ground-based exposures and simulated deep space radiation, not astronaut flight measurements. Every study page returned HTTP 200. Drafts describe study questions, not inferred results. API documentation: https://api.nasa.gov/",
@@ -34,7 +34,7 @@
     },
     {
       "id": "OSD-366",
-      "text": "Scientists studied how different types of mice respond to simulated deep space radiation.",
+      "text": "Scientists tested skin cells from 15 kinds of mice with simulated deep space radiation.",
       "studyTitle": "Coalescence of DNA double strand breaks induced by galactic cosmic radiation is modulated by genetics in 15 inbred strains of mice",
       "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-366",
       "topic": "radiation"

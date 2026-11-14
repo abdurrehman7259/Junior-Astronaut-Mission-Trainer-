@@ -82,7 +82,7 @@ describe('kidTextFor', () => {
   });
 
   it('describes quiet days as calm', () => {
-    for (const id of manyIds) expect(kidTextFor(quiet(id))).toMatch(/calm|quiet|no flares/i);
+    for (const id of manyIds) expect(kidTextFor(quiet(id))).toMatch(/calm|quiet|no big flares/i);
     for (const id of manyIds) expect(kidTextFor(quiet(id))).toMatch(/science/i);
   });
 
@@ -109,7 +109,8 @@ describe('kidTextFor on the Moon is unchanged', () => {
     'This CME cloud would take about 4 days to reach the Moon. In our game it hits your base, so shield up!',
     'At this speed, it would take about 2 days to cross to the Moon. Strong shields will help your crew.',
     'Huge Sun cloud! It would take about 1 day to reach the Moon, so shield up.',
-    'Real NASA records show a calm Sun, with no flares or CMEs. Great day for science!',
+    // Fact-check fix (D-028): DONKI logs notable events only, so say "no big flares".
+    "NASA's records show no big flares or CMEs this day. Great day for science!",
     'A giant cloud of Sun gas and magnetism is coming. Power your shield to be ready.',
   ];
 
@@ -165,6 +166,6 @@ describe('kidTextFor on Mars', () => {
   });
 
   it('describes a quiet Mars day with real records', () => {
-    expect(kidTextFor(quiet('q'), 'mars')).toBe('The real Sun was calm: no flares or CMEs were recorded.');
+    expect(kidTextFor(quiet('q'), 'mars')).toBe("NASA's storm log shows no big flares or CMEs this day.");
   });
 });

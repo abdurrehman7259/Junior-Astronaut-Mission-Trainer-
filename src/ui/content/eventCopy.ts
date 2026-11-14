@@ -77,9 +77,9 @@ const CME_NO_SPEED: readonly string[] = [
 ];
 
 const QUIET_DAY: readonly string[] = [
-  'The real Sun was calm on this day: no flares or CMEs were recorded. Calm days are great for science.',
-  'Real NASA records show a calm Sun, with no flares or CMEs. Great day for science!',
-  'Quiet Sun day: no flares or CMEs were recorded. Your crew can focus on science.',
+  "NASA's storm log shows no big flares or CMEs this day. Calm days are great for science.",
+  "NASA's records show no big flares or CMEs this day. Great day for science!",
+  'Quiet Sun day: no big flares or CMEs were logged. Your crew can focus on science.',
 ];
 
 /** Mars flare wording: no "8 minutes" (that is the Earth and Moon light time), no travel claims. */
@@ -108,7 +108,7 @@ const MARS_CME_GAME_ONLY: readonly string[] = [
   'This CME was recorded by NASA. In our game, it also reaches Mars, so shield early.',
 ];
 
-const MARS_QUIET = 'The real Sun was calm: no flares or CMEs were recorded.';
+const MARS_QUIET = "NASA's storm log shows no big flares or CMEs this day.";
 
 function flareText(event: SolarEvent, site: SiteId): string {
   const cls = (event.flareClass ?? '').trim();

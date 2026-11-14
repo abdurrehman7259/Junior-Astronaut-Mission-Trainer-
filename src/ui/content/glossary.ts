@@ -12,8 +12,8 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
   dose: {
     term: 'Dose',
     definition: 'Dose is how much radiation energy a body soaks up.',
-    sourceTitle: 'NASA: Why space radiation matters',
-    sourceUrl: 'https://www.nasa.gov/missions/analog-field-testing/why-space-radiation-matters/',
+    sourceTitle: 'NASA JSC Space Radiation Analysis Group: radiation FAQ',
+    sourceUrl: 'https://srag.jsc.nasa.gov/spaceradiation/faq/faq.cfm',
   },
   solarFlare: {
     term: 'Solar flare',
@@ -30,8 +30,8 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
   shielding: {
     term: 'Shielding',
     definition: 'Shielding is material, like water, plastic or Moon soil, that blocks some radiation.',
-    sourceTitle: 'NASA: Why space radiation matters',
-    sourceUrl: 'https://www.nasa.gov/missions/analog-field-testing/why-space-radiation-matters/',
+    sourceTitle: 'NASA NTRS: lunar regolith, polyethylene and water as radiation shielding',
+    sourceUrl: 'https://ntrs.nasa.gov/citations/20110012713',
   },
   sol: {
     term: 'Sol',

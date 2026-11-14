@@ -35,7 +35,7 @@ export const FACT_DRAFTS: readonly FactDraft[] = [
   },
   {
     id: 'OSD-366', topic: 'radiation',
-    text: 'Scientists studied how different types of mice respond to simulated deep space radiation.',
+    text: 'Scientists tested skin cells from 15 kinds of mice with simulated deep space radiation.',
     evidence: 'This study analyzes the variability of responses to simulated deep space radiation among 15 commonly used mouse strains.',
   },
 ];
