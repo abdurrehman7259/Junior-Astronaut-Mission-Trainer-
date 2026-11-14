@@ -1,30 +1,35 @@
 import type { GameEngine } from '../shared/engine-api';
-import { eventSetIdOf } from '../shared/eventSet';
+import { eventSetIdOf, siteOf } from '../shared/eventSet';
+import { SITES, UNKNOWN_FORECAST_EVENT } from '../shared/sites';
+import type { SiteId } from '../shared/types';
 import { MISSION_DAYS } from '../shared/types';
 import { drawWithRules } from './draw';
-import { RULES, type EngineRules } from './rules';
+import { RULES_BY_SITE, type EngineRules } from './rules';
 import { resolveTurn } from './turn';
 
-export { RULES } from './rules';
+export { RULES, RULES_BY_SITE } from './rules';
 export type { EngineRules } from './rules';
 
-/** Internal simulator seam: supply a complete numeric rules object; defaults remain untouched. */
-export function withRules(overrides: EngineRules): GameEngine {
-  const rules = structuredClone(overrides);
+/** Simulator seam: a single rules object overrides both sites, or supply a per-site map. */
+export function withRules(overrides: EngineRules | Record<SiteId, EngineRules>): GameEngine {
+  const bySite = structuredClone('moon' in overrides ? overrides : { moon: overrides, mars: overrides });
   return {
-    createGame(seed, eventSet) {
+    createGame(seed, eventSet, site = 'moon') {
       if (eventSet.length !== MISSION_DAYS) throw new RangeError(`A mission needs exactly ${MISSION_DAYS} events.`);
+      const rules = bySite[site];
       return {
-        day: 1, seed: seed >>> 0, status: 'playing',
+        day: 1, seed: seed >>> 0, status: 'playing', site,
         meters: { power: rules.start.power, lifeSupport: rules.start.lifeSupport, crewHealth: rules.start.crewHealth },
         scienceScore: rules.start.scienceScore, history: [], carryOver: [],
         events: eventSet.map(event => ({ ...event })), eventSetId: eventSetIdOf(eventSet),
       };
     },
-    previewTurn: (state, allocation) => resolveTurn(state, allocation, rules).result,
-    applyTurn: (state, allocation) => resolveTurn(state, allocation, rules),
-    drawEventSet: (events, seed, excludeSetIds) => drawWithRules(events, seed, excludeSetIds, rules),
+    previewTurn: (state, allocation) => resolveTurn(state, allocation, bySite[siteOf(state)],
+      SITES[siteOf(state)].warningDelayDays > 0 ? UNKNOWN_FORECAST_EVENT : undefined).result,
+    applyTurn: (state, allocation) => resolveTurn(state, allocation, bySite[siteOf(state)]),
+    // Drawing has no site argument: the pool is supplied by the caller; draw rules are shared.
+    drawEventSet: (events, seed, excludeSetIds) => drawWithRules(events, seed, excludeSetIds, bySite.moon),
   };
 }
 
-export const { createGame, previewTurn, applyTurn, drawEventSet } = withRules(RULES);
+export const { createGame, previewTurn, applyTurn, drawEventSet } = withRules(RULES_BY_SITE);

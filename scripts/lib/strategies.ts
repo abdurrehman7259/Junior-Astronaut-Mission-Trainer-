@@ -1,5 +1,7 @@
-import type { Allocation, GameState } from '../../src/shared/types';
+import type { Allocation, GameState, SiteId } from '../../src/shared/types';
 import { POWER_UNITS_PER_DAY } from '../../src/shared/types';
+import { siteOf } from '../../src/shared/eventSet';
+import { SITES } from '../../src/shared/sites';
 
 // Simulator policy choices, not engine rules or scientific measurements.
 export const POLICY = {
@@ -25,15 +27,29 @@ for (let life = 0; life <= POWER_UNITS_PER_DAY; life++) {
 export const allocationName = (a: Allocation) => `${a.life}/${a.shield}/${a.science}`;
 export const fixed = (allocation: Allocation): Strategy => () => ({ ...allocation });
 
-export function strategies(): Record<string, Strategy> {
+/** The only event information available before allocating: current warning or last report. */
+export function knownSeverity(state: GameState) {
+  return SITES[siteOf(state)].warningDelayDays === 0
+    ? state.events[state.day - 1].severity
+    : state.history.find(turn => turn.day === state.day - SITES[siteOf(state)].warningDelayDays)?.event.severity ?? 0;
+}
+
+// Simulator policy choices, not measurements. Delayed forecasts need a standing shield.
+export const POLICY_BY_SITE = {
+  moon: { ...POLICY, baseShield: 0 },
+  mars: { ...POLICY, lifeUnits: 5, baseShield: 3, shieldPerSeverity: 0.5, extraShield: 2, kidLifeUnits: 5 },
+};
+
+export function strategies(site: SiteId = 'moon'): Record<string, Strategy> {
+  const policy = POLICY_BY_SITE[site];
   const adaptive = (state: GameState, plus: boolean): Allocation => {
-    const policy = POLICY;
-    const severity = state.events[state.day - 1].severity;
+    const severity = knownSeverity(state);
     const life = plus && state.meters.lifeSupport < policy.lowLifeSupport
       ? policy.recoveryLifeUnits : policy.lifeUnits;
     const shield = Math.min(POWER_UNITS_PER_DAY - life,
-      severity * policy.shieldPerSeverity
-      + (plus && severity > 0 && state.meters.crewHealth < policy.lowCrewHealth ? policy.extraShield : 0));
+      policy.baseShield + Math.floor(severity * policy.shieldPerSeverity)
+      + (plus && (severity > 0 || policy.baseShield > 0)
+        && state.meters.crewHealth < policy.lowCrewHealth ? policy.extraShield : 0));
     return { life, shield, science: POWER_UNITS_PER_DAY - life - shield };
   };
   return {
@@ -44,12 +60,12 @@ export function strategies(): Record<string, Strategy> {
     'greedy-science (3/1/6)': fixed({ life: 3, shield: 1, science: 6 }),
     adaptive: state => adaptive(state, false),
     'adaptive-plus': state => adaptive(state, true),
-    'kid storm switch (4/3/3 or 4/6/0)': state => ({ ...(state.events[state.day - 1].severity
+    'kid storm switch (4/3/3 or 4/6/0)': state => ({ ...(knownSeverity(state)
       >= POLICY.kidStormSeverity ? POLICY.kidStorm : POLICY.kidNormal) }),
-    'kid extra air (5 / 2 x severity / rest)': state => {
-      const shield = Math.min(POWER_UNITS_PER_DAY - POLICY.kidLifeUnits,
-        POLICY.shieldPerSeverity * state.events[state.day - 1].severity);
-      return { life: POLICY.kidLifeUnits, shield, science: POWER_UNITS_PER_DAY - POLICY.kidLifeUnits - shield };
+    [`kid extra air (${policy.kidLifeUnits} / ${policy.baseShield} + floor(${policy.shieldPerSeverity} x warning) / rest)`]: state => {
+      const shield = Math.min(POWER_UNITS_PER_DAY - policy.kidLifeUnits,
+        policy.baseShield + Math.floor(policy.shieldPerSeverity * knownSeverity(state)));
+      return { life: policy.kidLifeUnits, shield, science: POWER_UNITS_PER_DAY - policy.kidLifeUnits - shield };
     },
   };
 }

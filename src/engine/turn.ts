@@ -1,7 +1,7 @@
-import { isValidAllocation } from '../shared/eventSet';
+import { isValidAllocation, siteOf } from '../shared/eventSet';
 import {
   METER_MIN, METER_MAX, MISSION_DAYS, POWER_UNITS_PER_DAY,
-  type Allocation, type CarryOverEffect, type GameState, type TurnResult,
+  type Allocation, type CarryOverEffect, type GameState, type TurnResult, type SolarEvent,
 } from '../shared/types';
 import { carryReasons, explainTurn } from './explain';
 import type { EngineRules } from './rules';
@@ -16,7 +16,7 @@ function copyTurn(turn: TurnResult): TurnResult {
     dose: { ...turn.dose }, explanations: { ...turn.explanations } };
 }
 
-export function resolveTurn(state: GameState, allocation: Allocation, rules: EngineRules): {
+export function resolveTurn(state: GameState, allocation: Allocation, rules: EngineRules, forecast?: SolarEvent): {
   state: GameState; result: TurnResult;
 } {
   if (state.status !== 'playing') throw new RangeError('This mission has already finished.');
@@ -24,7 +24,9 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
     throw new RangeError(`Split exactly ${POWER_UNITS_PER_DAY} whole power units across the three systems.`);
   }
 
-  const event = state.events[state.day - 1];
+  const event = forecast ?? state.events[state.day - 1];
+  const site = siteOf(state);
+  const reasons = carryReasons(site);
   const due = state.carryOver.filter(effect => effect.dueDay === state.day);
   const carryOver: CarryOverEffect[] = state.carryOver
     .filter(effect => effect.dueDay > state.day && effect.dueDay <= MISSION_DAYS)
@@ -43,7 +45,7 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
   const recovery = Math.max(0, allocation.life - rules.lifeSupportMinUnits) * rules.lifeSupportRecoveryPerExtraUnit;
   after.lifeSupport += recovery;
   if (airShortfall > 0) {
-    consequence('air', -airShortfall * rules.lifeSupportDrainPerMissingUnit, carryReasons.air);
+    consequence('air', -airShortfall * rules.lifeSupportDrainPerMissingUnit, reasons.air);
   }
 
   // Game rule: an underfunded system runs for only its funded fraction of today.
@@ -64,7 +66,7 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
   after.power = clampMeter(available - cost);
   const brownout = after.power === METER_MIN;
   if (brownout) {
-    consequence('brownout', -rules.brownoutLifeSupportDrain, carryReasons.brownout);
+    consequence('brownout', -rules.brownoutLifeSupportDrain, reasons.brownout);
   }
   after.lifeSupport = clampMeter(after.lifeSupport);
   after.crewHealth = clampMeter(after.crewHealth);
@@ -79,13 +81,13 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
       crewHealth: after.crewHealth - state.meters.crewHealth,
     },
     scienceBefore: state.scienceScore, scienceGained, scienceAfter: state.scienceScore + scienceGained,
-    dose, explanations: explainTurn({ allocation, event, dose, due, airShortfall,
+    dose, explanations: explainTurn({ site, allocation, event, dose, due, airShortfall,
       recovery: Math.max(0, after.lifeSupport - state.meters.lifeSupport),
       brownout, scienceGained, finalDay, underfunded: funded < 1 }),
     statusAfter,
   };
   const next: GameState = {
-    ...state, day: statusAfter === 'playing' ? state.day + 1 : state.day,
+    ...state, site, day: statusAfter === 'playing' ? state.day + 1 : state.day,
     meters: { ...after }, scienceScore: result.scienceAfter,
     history: [...state.history, result].map(copyTurn), carryOver,
     events: state.events.map(item => ({ ...item })), status: statusAfter,

@@ -1,4 +1,6 @@
-/** GAME RULES: invented for gameplay balance, not real measurements */
+import type { SiteId } from '../shared/types';
+
+/** GAME RULES: invented for gameplay balance, not measurements. */
 export const RULES = {
   start: {
     power: 65, // Starting battery reserve.
@@ -30,3 +32,18 @@ export const RULES = {
 // Widen numeric literals so simulators can pass { ...RULES, sciencePerUnit: 6 }.
 type NumericRules<T> = { readonly [K in keyof T]: T[K] extends number ? number : NumericRules<T[K]> };
 export type EngineRules = NumericRules<typeof RULES>;
+
+/** Per-site game rules, not measurements; inherited values retain their comments above. */
+export const RULES_BY_SITE: Record<SiteId, EngineRules> = {
+  moon: RULES,
+  mars: {
+    ...RULES,
+    // Mars receives about 43% of Earth's sunlight at its average distance; use a gentler cut.
+    // NASA source: https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html
+    powerRechargePerDay: 4, // Game rule: less solar recharge per sol, not a measured ratio.
+    powerRechargeOnCme: 3, // Game rule: slightly less recharge during CMEs.
+    // Keep the same game doses. A thin atmosphere and no global magnetic field do not
+    // justify inventing a real Moon/Mars dose ratio. NASA: https://science.nasa.gov/mars/facts/
+    // The delayed forecast in SITES is the main gameplay difference.
+  },
+};

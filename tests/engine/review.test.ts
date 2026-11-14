@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { applyTurn, createGame, previewTurn, RULES, withRules } from '../../src/engine';
+import { applyTurn, createGame, previewTurn, RULES, RULES_BY_SITE, withRules } from '../../src/engine';
 import { GameStateSchema, TurnExplanationsSchema } from '../../src/shared/schemas';
+import { SITE_IDS } from '../../src/shared/sites';
 import { MISSION_DAYS } from '../../src/shared/types';
 import { allocations, balanced, daysOf } from './helpers';
 
@@ -55,31 +56,42 @@ describe('B2 review regressions', () => {
   it('keeps all 66 allocations across severities, meters and final days grammatical and schema-valid', () => {
     // Include no-recharge states: funded fractions must exercise both 0 and 1 point.
     const gains = new Set<number>();
-    for (const engine of [withRules(RULES), withRules({ ...RULES, powerRechargePerDay: 0 })]) {
-      for (const severity of [0, 1, 2, 3] as const) {
-        for (const meters of [
-          { power: 100, lifeSupport: 100, crewHealth: 100 },
-          { power: 0, lifeSupport: 20, crewHealth: 20 },
-          { power: 1, lifeSupport: 1, crewHealth: 1 },
-          { power: 65, lifeSupport: 80, crewHealth: 90 },
-        ]) {
-          for (const day of [1, MISSION_DAYS]) {
-            const state = createGame(1, daysOf(severity === 0 ? 'QUIET' : 'FLR', severity));
-            state.meters = meters;
-            state.day = day;
-            for (const allocation of allocations) {
-              const { explanations, scienceGained } = engine.previewTurn(state, allocation);
-              if (explanations.science.startsWith('Battery empty!')) gains.add(scienceGained);
-              TurnExplanationsSchema.parse(explanations);
-              expect(explanations.science).not.toMatch(/\b1 science points\b/);
-              expect(explanations.science).not.toMatch(/\b(?:0|[2-9]|\d{2,}) science point\b/);
-              if (severity === 0) expect(explanations.power).not.toContain('shield was weaker');
-              if (severity > 0 && allocation.shield === 0) {
-                expect(explanations.crewHealth).toBe(`No shield! All ${RULES.dosePerSeverity[severity]} game dose reached the crew.`);
+    for (const site of SITE_IDS) {
+      const rules = RULES_BY_SITE[site];
+      for (const engine of [withRules(rules), withRules({ ...rules, powerRechargePerDay: 0 })]) {
+        for (const severity of [0, 1, 2, 3] as const) {
+          for (const meters of [
+            { power: 100, lifeSupport: 100, crewHealth: 100 },
+            { power: 0, lifeSupport: 20, crewHealth: 20 },
+            { power: 1, lifeSupport: 1, crewHealth: 1 },
+            { power: 65, lifeSupport: 80, crewHealth: 90 },
+          ]) {
+            for (const day of [1, MISSION_DAYS]) {
+              const state = engine.createGame(1, daysOf(severity === 0 ? 'QUIET' : 'FLR', severity), site);
+              state.meters = meters;
+              state.day = day;
+              if (meters.power === 1) state.carryOver = [{ id: 'earlier', dueDay: day,
+                meter: 'lifeSupport', delta: -1, reason: 'Earlier air shortage.' }];
+              for (const allocation of allocations) {
+                const turn = engine.applyTurn(state, allocation);
+                const { explanations, scienceGained } = turn.result;
+                if (explanations.science.startsWith('Battery empty!')) gains.add(scienceGained);
+                TurnExplanationsSchema.parse(explanations);
+                for (const line of [...Object.values(explanations), ...turn.state.carryOver.map(effect => effect.reason)]) {
+                  expect(line.trim().split(/\s+/).length).toBeLessThanOrEqual(15);
+                  if (site === 'mars') expect(line).not.toMatch(/day|tomorrow/i);
+                }
+                if (site === 'mars') expect(explanations.science).toContain('this sol');
+                expect(explanations.science).not.toMatch(/\b1 science points\b/);
+                expect(explanations.science).not.toMatch(/\b(?:0|[2-9]|\d{2,}) science point\b/);
+                if (severity === 0) expect(explanations.power).not.toContain('shield was weaker');
+                if (severity > 0 && allocation.shield === 0) {
+                  expect(explanations.crewHealth).toBe(`No shield! All ${RULES.dosePerSeverity[severity]} game dose reached the crew.`);
+                }
+                expect(explanations.lifeSupport).not.toContain('Only 0');
+                if (meters.lifeSupport === 100) expect(explanations.lifeSupport).not.toContain('helped restore');
+                if (allocation.science + allocation.shield === 0) expect(explanations.power).not.toContain('used reserve');
               }
-              expect(explanations.lifeSupport).not.toContain('Only 0');
-              if (meters.lifeSupport === 100) expect(explanations.lifeSupport).not.toContain('helped restore');
-              if (allocation.science + allocation.shield === 0) expect(explanations.power).not.toContain('used reserve');
             }
           }
         }

@@ -1,11 +1,12 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { RULES, withRules, type EngineRules } from '../src/engine';
-import { DonkiSnapshotSchema } from '../src/shared/schemas';
-import type { GameState, SolarEvent } from '../src/shared/types';
+import { RULES_BY_SITE, withRules, type EngineRules } from '../src/engine';
+import { DonkiMarsSnapshotSchema, DonkiSnapshotSchema } from '../src/shared/schemas';
+import type { GameState, SolarEvent, SiteId } from '../src/shared/types';
+import { SITES, SITE_IDS } from '../src/shared/sites';
 import { EVENTS } from '../tests/engine/fixtures/events';
-import { allocationName, allocations, fixed, POLICY, strategies, type Strategy } from './lib/strategies';
+import { allocationName, allocations, fixed, POLICY_BY_SITE, strategies, type Strategy } from './lib/strategies';
 
 export const MISSION_COUNT = 1000;
 export interface Summary {
@@ -39,10 +40,11 @@ export function evaluate(name: string, policy: Strategy, starts: GameState[], ru
     meanCrewHealth: health / starts.length };
 }
 
-export function simulate(pool: SolarEvent[], rules: EngineRules = RULES, count = MISSION_COUNT) {
+export function simulate(pool: SolarEvent[], overrides?: EngineRules, count = MISSION_COUNT, site: SiteId = 'moon') {
+  const rules = overrides ?? RULES_BY_SITE[site];
   const engine = withRules(rules);
-  const starts = Array.from({ length: count }, (_, i) => engine.createGame(i + 1, engine.drawEventSet(pool, i + 1, [])));
-  const named = Object.entries(strategies()).map(([name, policy]) => evaluate(name, policy, starts, rules));
+  const starts = Array.from({ length: count }, (_, i) => engine.createGame(i + 1, engine.drawEventSet(pool, i + 1, []), site));
+  const named = Object.entries(strategies(site)).map(([name, policy]) => evaluate(name, policy, starts, rules));
   const fixedResults = allocations.map(allocation => evaluate(allocationName(allocation), fixed(allocation), starts, rules));
   // "Best" means most mean science among policies that win >=85%; ties favor survival.
   const rank = (a: Summary, b: Summary) => b.meanScience - a.meanScience || b.wins - a.wins;
@@ -52,7 +54,7 @@ export function simulate(pool: SolarEvent[], rules: EngineRules = RULES, count =
   const bestAdaptive = adaptive.filter(row => row.winPercent >= 85).sort(rank)[0]
     ?? [...adaptive].sort((a, b) => b.wins - a.wins || rank(a, b))[0];
   return { rows: [...named.slice(0, 5), { ...bestFixed, name: `best fixed (${bestFixed.name})` }, ...named.slice(5)],
-    fixedResults, reliableFixed, bestFixed, bestAdaptive };
+    site, fixedResults, reliableFixed, bestFixed, bestAdaptive };
 }
 
 export function balanceTargets(result: ReturnType<typeof simulate>) {
@@ -66,7 +68,9 @@ export function balanceTargets(result: ReturnType<typeof simulate>) {
     adaptiveAdvantage: result.reliableFixed.length > 0 && result.bestAdaptive.winPercent >= 85
       && result.bestAdaptive.meanScience >= result.bestFixed.meanScience * 1.25,
     adaptiveCanLose: result.bestAdaptive.winPercent >= 85 && result.bestAdaptive.winPercent < 100,
-    kidFriendly: result.rows.filter(item => item.name.startsWith('kid ')).every(item => item.winPercent >= 90),
+    kidFriendly: result.site === 'mars'
+      ? result.rows.filter(item => item.name.startsWith('kid ')).some(item => item.winPercent >= 75)
+      : result.rows.filter(item => item.name.startsWith('kid ')).every(item => item.winPercent >= 90),
   };
 }
 
@@ -78,11 +82,17 @@ export function table(rows: Summary[]): string {
   ].join('\n');
 }
 
-export function loadPool() {
-  const path = fileURLToPath(new URL('../public/data/donki-events.json', import.meta.url));
+export function loadPool(site: SiteId = 'moon'): { events: SolarEvent[]; label: string } {
+  const relative = `public${SITES[site].eventsFile}`;
+  const path = fileURLToPath(new URL(`../${relative}`, import.meta.url));
   if (existsSync(path)) {
-    const snapshot = DonkiSnapshotSchema.parse(JSON.parse(readFileSync(path, 'utf8')));
-    return { events: snapshot.items, label: `public/data/donki-events.json - Archived (retrieved ${snapshot.retrievedAt.slice(0, 10)}); retrievedAt=${snapshot.retrievedAt}; source: ${snapshot.sourceUrl}` };
+    const schema = site === 'mars' ? DonkiMarsSnapshotSchema : DonkiSnapshotSchema;
+    const snapshot = schema.parse(JSON.parse(readFileSync(path, 'utf8')));
+    return { events: snapshot.items, label: `${relative} - Archived (retrieved ${snapshot.retrievedAt.slice(0, 10)}); retrievedAt=${snapshot.retrievedAt}; source: ${snapshot.sourceUrl}` };
+  }
+  if (site === 'mars') {
+    const moon = loadPool('moon');
+    return { events: moon.events, label: `MARS PROXY (Mars snapshot missing): ${moon.label}` };
   }
   return { events: EVENTS, label: 'tests/engine/fixtures/events.ts - synthetic test fixture, not NASA observations' };
 }
@@ -98,33 +108,51 @@ export function poolMix(events: SolarEvent[]): string {
   return `${events.length} items: ${kinds}. Storm severity mix: ${mix}.`;
 }
 
-export function main() {
+export function selectedSites(args: string[]): readonly SiteId[] {
+  if (args.length === 0) return SITE_IDS;
+  if (args.length !== 2 || args[0] !== '--site' || !['moon', 'mars', 'both'].includes(args[1])) {
+    throw new RangeError('Usage: simulate.ts [--site moon|mars|both]');
+  }
+  return args[1] === 'both' ? SITE_IDS : [args[1] as SiteId];
+}
+
+export function main(args = process.argv.slice(2)) {
   try { process.loadEnvFile('.env'); } catch { /* Optional local environment. */ }
-  const pool = loadPool();
-  const primary = simulate(pool.events);
-  const fixture = pool.events === EVENTS ? primary : simulate(EVENTS);
-  const primaryTargets = balanceTargets(primary);
-  const fixtureTargets = balanceTargets(fixture);
-  const holds = [...Object.values(primaryTargets), ...Object.values(fixtureTargets)].every(Boolean);
-  const text = [
-    '# B3 fix round 1 balance report',
-    `Pool: ${pool.label}.\n\n${poolMix(pool.events)}`,
-    `${MISSION_COUNT} missions per strategy; seeds 1-${MISSION_COUNT}, identical draws for every strategy. All 66 fixed allocations searched. Best fixed means highest mean science among allocations winning at least 85%; best adaptive uses the same criterion among adaptive and adaptive-plus. Science includes ended missions; wins-only science is zero when there are no wins. Automated balance tests use 300 seeds per pool.`,
-    table(primary.rows),
-    `Primary targets 1-6: ${JSON.stringify(primaryTargets)}.`,
-    '## Fixture acceptance',
-    `Pool: tests/engine/fixtures/events.ts - synthetic test fixture, not NASA observations.\n\n${poolMix(EVENTS)}`,
-    pool.events === EVENTS ? 'Same pool and results as above.' : table(fixture.rows),
-    `Fixture targets 1-6: ${JSON.stringify(fixtureTargets)}.`,
-    `US-03 ${holds ? 'passes targets 1-6 on both reported pools' : 'needs further tuning; see failed targets above'}. The tables show the cost of ignoring the allocator and the benefit of reacting to events. These are seeded sample results, not guarantees for every mission or other event pools. The 85% reliability cutoff can change which fixed plan is selected between 300 and 1,000 seeds; all fixed results are included below so near-cutoff plans remain visible.`,
-    'All balance values are game rules, not measurements. Empty batteries reduce shield protection and science production proportionally. Air shortages and brownouts land immediately on day 10. No numeric RULES changes were needed: both committed pools pass all targets with the existing values. RULES.strategy moved unchanged into simulator POLICY; the two kid heuristics were added there.',
-    'Draw rules are unchanged: choose 3-5 storms uniformly, choose one severity >=2 anchor uniformly, fill remaining storm slots uniformly without replacement, then shuffle storm order. This deliberately favors including a stronger event; it is not an estimate of natural storm frequency. Valid positions are sampled uniformly subject to at most two consecutive storms. Edge-day marginal rates need not equal middle-day rates. Records keep their original identity and data. No extra severity weighting was needed. Milder proxy pools were not acceptance pools in this run.',
-    'Policies: adaptive uses life 4 and shield 2 x severity; adaptive-plus also reacts to low air or health. Kid storm switch uses 4/3/3 normally and 4/6/0 at severity >=2. Kid extra air uses life 5 and shield min(5, 2 x severity), putting the remainder into science. The shield cap keeps the severity-3 plan within the ten-unit budget.',
-    `## RULES\n\n\`\`\`json\n${JSON.stringify(RULES, null, 2)}\n\`\`\``,
-    `## Simulator POLICY\n\n\`\`\`json\n${JSON.stringify(POLICY, null, 2)}\n\`\`\``,
-    `## All fixed allocations: primary pool\n\n${table(primary.fixedResults)}`,
-    `## All fixed allocations: fixture\n\n${table(fixture.fixedResults)}`,
-  ].join('\n\n') + '\n';
+  const sections = [
+    '# B9 Moon + Mars balance report',
+    `${MISSION_COUNT} missions per strategy; seeds 1-${MISSION_COUNT}, identical draws per site for every policy. All 66 fixed allocations searched. Best fixed and best adaptive maximize mean science among policies winning at least 85%; fallback ranks by survival. Science includes ended missions. Automated tests use 300 seeds per site and pool. All balance values are game rules, not measurements.`,
+    'Moon policies see the current warning. Mars policies use only the previous report and current meters; no current or future storm severity is available. Mars previews assume a calm Sun. Both sites share the same draw algorithm: 3-5 storms, at least one severity >=2, no more than two consecutive storms. These are gameplay constraints, not natural storm frequencies.',
+    'Rules: Moon values are unchanged. Mars changes only reserve recharge: ordinary turns 5 -> 4, CME turns 4 -> 3. Starting meters, equipment costs, air penalties, shield effectiveness and game doses are identical. The one-sol delayed warning is the main difference. No physical Moon/Mars dose ratio is claimed.',
+    'Policies: Moon adaptive uses life 4 and shield 2 x current severity. Mars adaptive uses life 5 and shield 3, increasing to 4 after a severity 2-3 report. Adaptive-plus uses life 6 below 40 air; below 40 health it adds one shield on warned Moon storms, or two standing shields on Mars. Shield allocations are capped by the ten-unit budget. Kid storm switch uses 4/3/3 or 4/6/0 at warning severity >=2. Kid extra air always uses life 5, with the same shield rule as adaptive and the rest in science. On Mars, warning always means the previous report, with no warning on sol 1.',
+    'Enforced targets: extreme plans lose or earn no science; no fixed plan wins >=95% with science within 10% of best adaptive; 4/3/3 wins <90%; best adaptive wins >=85% with >=25% more mean science than the best fixed plan winning >=85%; best adaptive can lose. Both Moon kid heuristics must win >=90%; at least one Mars kid heuristic must win >=75%.',
+  ];
+  let holds = true;
+  for (const site of selectedSites(args)) {
+    const pool = loadPool(site);
+    const primary = simulate(pool.events, RULES_BY_SITE[site], MISSION_COUNT, site);
+    const fixture = pool.events === EVENTS ? primary : simulate(EVENTS, RULES_BY_SITE[site], MISSION_COUNT, site);
+    const primaryTargets = balanceTargets(primary);
+    const fixtureTargets = balanceTargets(fixture);
+    holds &&= [...Object.values(primaryTargets), ...Object.values(fixtureTargets)].every(Boolean);
+    sections.push(
+      `## ${SITES[site].name}`,
+      `Pool: ${pool.label}.\n\n${poolMix(pool.events)}`,
+      table(primary.rows),
+      `Primary targets: ${JSON.stringify(primaryTargets)}.`,
+      `### ${SITES[site].name} fixture acceptance`,
+      `Synthetic test fixture: tests/engine/fixtures/events.ts.\n\n${poolMix(EVENTS)}`,
+      table(fixture.rows),
+      `Fixture targets: ${JSON.stringify(fixtureTargets)}.`,
+      `### ${SITES[site].name} rules (game rules, not measurements)\n\n${'`'.repeat(3)}json\n${JSON.stringify(RULES_BY_SITE[site], null, 2)}\n${'`'.repeat(3)}`,
+      `### ${SITES[site].name} all fixed allocations: primary pool\n\n${table(primary.fixedResults)}`,
+      `### ${SITES[site].name} all fixed allocations: fixture\n\n${table(fixture.fixedResults)}`,
+    );
+  }
+  sections.push(
+    `US-03 ${holds ? 'passes all enforced targets' : 'needs further tuning; see failed targets above'}. Results describe seeded samples, not guarantees for other seeds or event pools. Fixed plans cannot combine near-adaptive science with 95% wins. The default plan requires intervention; meter-aware choices preserve air and reserve power.`,
+    `## Simulator policy settings\n\n${'`'.repeat(3)}json\n${JSON.stringify(POLICY_BY_SITE, null, 2)}\n${'`'.repeat(3)}`,
+  );
+  const text = sections.join('\n\n') + '\n';
   writeFileSync(new URL('../reports/balance-report.md', import.meta.url), text);
   console.log(text);
   if (!holds) process.exitCode = 1;
