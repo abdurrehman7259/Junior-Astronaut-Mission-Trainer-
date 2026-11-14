@@ -8,3 +8,4 @@ playwright-report/
 test-results/
 .netlify/
 *.local
+.cache/

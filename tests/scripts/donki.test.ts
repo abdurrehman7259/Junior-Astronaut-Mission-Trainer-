@@ -198,29 +198,45 @@ describe('fetchDonkiRecords (mocked network only)', () => {
     expect(fetch).toHaveBeenCalledTimes(32);
   });
 
+  // (D-017): a failed half is split again (up to MAX_SPLIT_DEPTH) instead of aborting the run.
   it.each(['2024-01-01..2024-01-30', '2024-01-31..2024-02-29'])(
-    'throws when half %s also exhausts retries, without splitting it again', async (failedHalf) => {
+    'splits a failed half %s again and keeps every record', async (failedHalf) => {
       vi.useFakeTimers();
       const fetch = vi.fn().mockImplementation((input: URL) => {
         const range = `${input.searchParams.get('startDate')}..${input.searchParams.get('endDate')}`;
         if (input.pathname.endsWith('/CME') && (range === '2024-01-01..2024-02-29' || range === failedHalf)) {
           return Promise.reject(new TypeError('terminated'));
         }
-        return Promise.resolve(Response.json([{ retainedOnlyIfComplete: true }]));
+        return Promise.resolve(Response.json(input.pathname.endsWith('/CME') ? [{ range }] : []));
       });
       vi.stubGlobal('fetch', fetch);
-      const assertion = expect(fetchDonkiRecords('SECRET')).rejects.toThrow('terminated');
+      const pending = fetchDonkiRecords('SECRET');
       await vi.runAllTimersAsync();
-      await assertion;
-      const ranges = fetch.mock.calls.map(([url]) => new URL(String(url)))
-        .filter((url) => url.pathname.endsWith('/CME') && url.searchParams.get('endDate')! <= '2024-02-29')
-        .map((url) => `${url.searchParams.get('startDate')}..${url.searchParams.get('endDate')}`);
-      expect(ranges.filter((range) => range === '2024-01-01..2024-02-29')).toHaveLength(5);
-      expect(ranges.filter((range) => range === failedHalf)).toHaveLength(5);
-      expect(ranges.every((range) => ['2024-01-01..2024-02-29', '2024-01-01..2024-01-30',
-        '2024-01-31..2024-02-29'].includes(range))).toBe(true);
+      const cme = (await pending).CME as { range: string }[];
+      const firstWindow = cme.filter((r) => r.range.endsWith('2024-02-29') || r.range < '2024-03');
+      // The good half is kept once; the failed half arrives as two smaller sub-windows; nothing is lost or duplicated.
+      expect(firstWindow.map((r) => r.range)).not.toContain(failedHalf);
+      expect(firstWindow.length).toBe(3);
+      expect(new Set(firstWindow.map((r) => r.range)).size).toBe(3);
     },
   );
+
+  it('still throws when a window keeps failing all the way down to the split limit', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockImplementation((input: URL) => {
+      const end = input.searchParams.get('endDate')!;
+      if (input.pathname.endsWith('/CME') && end <= '2024-02-29') return Promise.reject(new TypeError('terminated'));
+      return Promise.resolve(Response.json([]));
+    });
+    vi.stubGlobal('fetch', fetch);
+    const assertion = expect(fetchDonkiRecords('SECRET')).rejects.toThrow('terminated');
+    await vi.runAllTimersAsync();
+    await assertion;
+    const distinct = new Set(fetch.mock.calls.map(([url]) => new URL(String(url)))
+      .filter((url) => url.pathname.endsWith('/CME') && url.searchParams.get('endDate')! <= '2024-02-29')
+      .map((url) => `${url.searchParams.get('startDate')}..${url.searchParams.get('endDate')}`));
+    expect(distinct.size).toBeLessThanOrEqual(6); // the first failing branch stops at depth 5: 1 + 5 windows
+  });
 });
 
 describe('mapFlare', () => {

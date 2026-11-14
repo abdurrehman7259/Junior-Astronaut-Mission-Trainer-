@@ -1,4 +1,4 @@
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DonkiSnapshotSchema } from '../src/shared/schemas';
@@ -12,13 +12,40 @@ const OUTPUT = fileURLToPath(new URL('../public/data/donki-events.json', import.
 const CCMC_BASE = 'https://ccmc.gsfc.nasa.gov/DONKI-API/get';
 const GATEWAY_BASE = 'https://api.nasa.gov/DONKI';
 const CCMC_CONCURRENCY = 3;
+/** Raw CCMC responses are cached per window (gitignored) so a failed run resumes. --fresh ignores the cache. */
+const CACHE_DIR = fileURLToPath(new URL('../.cache/donki/', import.meta.url));
+const MAX_SPLIT_DEPTH = 5; // 60 days -> ~2 days at most
+// Off by default so unit tests (mocked fetch) can never write or read the cache; main() turns it on.
+let useCache = false;
+
+async function readCache(kind: string, window: DateWindow): Promise<unknown[] | null> {
+  if (!useCache) return null;
+  try {
+    const cached: unknown = JSON.parse(await readFile(`${CACHE_DIR}${kind}-${window.startDate}-${window.endDate}.json`, 'utf8'));
+    return Array.isArray(cached) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+async function writeCache(kind: string, window: DateWindow, records: unknown[]): Promise<void> {
+  await mkdir(CACHE_DIR, { recursive: true });
+  await writeFile(`${CACHE_DIR}${kind}-${window.startDate}-${window.endDate}.json`, JSON.stringify(records), 'utf8');
+}
 
 type RawDonki = { FLR: unknown[]; CME: unknown[] };
 type DateWindow = { startDate: string; endDate: string };
 
 async function fetchRange(
-  base: string, kind: 'FLR' | 'CME', window: DateWindow, apiKey?: string, canSplit = true,
+  base: string, kind: 'FLR' | 'CME', window: DateWindow, apiKey?: string, depth = 0,
 ): Promise<unknown[]> {
+  if (base === CCMC_BASE && useCache) {
+    const cached = await readCache(kind, window);
+    if (cached) {
+      console.log(`DONKI CCMC ${kind} ${window.startDate}..${window.endDate} cached records=${cached.length}`);
+      return cached;
+    }
+  }
   const url = new URL(`${base}/${kind}`);
   url.searchParams.set('startDate', window.startDate);
   url.searchParams.set('endDate', window.endDate);
@@ -38,20 +65,21 @@ async function fetchRange(
     const end = Date.parse(`${window.endDate}T00:00:00Z`);
     const retryable = error instanceof HttpTimeoutError || error instanceof HttpNetworkError
       || (error instanceof HttpError && (error.status === 429 || (error.status >= 500 && error.status <= 599)));
-    // Split a slow or exhausted CCMC window once, keeping both halves mandatory.
-    if (base !== CCMC_BASE || !canSplit || !retryable || start >= end) throw error;
+    // Split a slow or exhausted CCMC window into two mandatory halves, up to MAX_SPLIT_DEPTH times.
+    if (base !== CCMC_BASE || depth >= MAX_SPLIT_DEPTH || !retryable || start >= end) throw error;
     const dayMs = 86_400_000;
     const middle = start + Math.floor((end - start) / dayMs / 2) * dayMs;
     const first = await fetchRange(base, kind, {
       startDate: window.startDate, endDate: new Date(middle).toISOString().slice(0, 10),
-    }, apiKey, false);
+    }, apiKey, depth + 1);
     const second = await fetchRange(base, kind, {
       startDate: new Date(middle + dayMs).toISOString().slice(0, 10), endDate: window.endDate,
-    }, apiKey, false);
+    }, apiKey, depth + 1);
     return [...first, ...second];
   }
   // An error object or empty body must not be mistaken for an event-free range.
   if (!Array.isArray(response)) throw new Error(`DONKI ${kind} ${window.startDate} did not return a JSON array`);
+  if (base === CCMC_BASE && useCache) await writeCache(kind, window, response);
   return response;
 }
 
@@ -103,6 +131,7 @@ export async function fetchDonkiRecords(apiKey: string, options: { gateway?: boo
 
 export async function main(): Promise<void> {
   try { process.loadEnvFile('.env'); } catch { /* Environment variables or DEMO_KEY suffice. */ }
+  useCache = !process.argv.includes('--fresh');
   // CCMC is the default; --ccmc remains a redundant compatible flag.
   const raw = await fetchDonkiRecords(process.env.NASA_API_KEY || 'DEMO_KEY', {
     gateway: process.argv.includes('--gateway'),
