@@ -33,7 +33,7 @@ describe('StartScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Continue mission (Day 4)' }));
     expect(onResume).toHaveBeenCalledOnce();
     await user.click(screen.getByRole('button', { name: 'New mission' }));
-    expect(onStart).toHaveBeenCalledWith('Cadets');
+    expect(onStart).toHaveBeenCalledWith('Cadets', 'moon');
   });
 
   it('keeps 12 characters of a 20-character name and shows the count', async () => {
@@ -58,10 +58,10 @@ describe('StartScreen', () => {
     const onStart = vi.fn();
     const { unmount } = render(<StartScreen onStart={onStart} />);
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
-    expect(onStart).toHaveBeenLastCalledWith('Cadets');
+    expect(onStart).toHaveBeenLastCalledWith('Cadets', 'moon');
     await user.type(screen.getByLabelText('Crew name (optional)'), '  Moon-9 ');
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
-    expect(onStart).toHaveBeenLastCalledWith('Moon-9');
+    expect(onStart).toHaveBeenLastCalledWith('Moon-9', 'moon');
     unmount();
   });
 
@@ -70,7 +70,7 @@ describe('StartScreen', () => {
     const onStart = vi.fn();
     render(<StartScreen onStart={onStart} />);
     await user.type(screen.getByLabelText('Crew name (optional)'), 'Nova{Enter}');
-    expect(onStart).toHaveBeenCalledWith('Nova');
+    expect(onStart).toHaveBeenCalledWith('Nova', 'moon');
   });
 
   it('saves the name and loads it next time', async () => {
@@ -98,6 +98,6 @@ describe('StartScreen', () => {
     const onStart = vi.fn();
     render(<StartScreen onStart={onStart} />);
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
-    expect(onStart).toHaveBeenCalledWith('Cadets');
+    expect(onStart).toHaveBeenCalledWith('Cadets', 'moon');
   });
 });

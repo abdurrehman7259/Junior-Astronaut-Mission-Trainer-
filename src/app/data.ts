@@ -1,5 +1,12 @@
-import { DoseCalibrationSchema, DonkiSnapshotSchema, OsdrSnapshotSchema } from '../shared/schemas';
-import type { DoseCalibration, ScienceFact, Snapshot, SolarEvent } from '../shared/types';
+import {
+  DoseCalibrationSchema,
+  DonkiMarsSnapshotSchema,
+  DonkiSnapshotSchema,
+  MarsSiteInfoSchema,
+  OsdrSnapshotSchema,
+} from '../shared/schemas';
+import { SITES } from '../shared/sites';
+import type { DoseCalibration, MarsSiteInfo, ScienceFact, Snapshot, SolarEvent } from '../shared/types';
 import { STUB_EVENTS } from './stub-events';
 
 export interface LoadedEvents {
@@ -50,4 +57,21 @@ export async function loadExtras(): Promise<LoadedExtras> {
     loadOne('/data/radlab-dose.json', (j) => DoseCalibrationSchema.parse(j)),
   ]);
   return { osdr, radlab };
+}
+
+export interface LoadedMars {
+  events: SolarEvent[];
+  retrievedAt: string;
+  site: MarsSiteInfo | null;
+}
+
+/**
+ * Load the archived Mars events and the Mars site facts. Null when the events file is missing or invalid.
+ * There is no placeholder for Mars, even in dev: without real data Mars is unavailable.
+ */
+export async function loadMarsData(): Promise<LoadedMars | null> {
+  const snapshot = await loadOne(SITES.mars.eventsFile, (j) => DonkiMarsSnapshotSchema.parse(j));
+  if (!snapshot) return null;
+  const site = await loadOne('/data/mars-site.json', (j) => MarsSiteInfoSchema.parse(j));
+  return { events: snapshot.items, retrievedAt: snapshot.retrievedAt, site };
 }

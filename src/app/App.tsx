@@ -8,24 +8,29 @@ import { MissionScreen } from '../ui/screens/MissionScreen';
 import { ResolutionScreen } from '../ui/screens/ResolutionScreen';
 import { StartScreen } from '../ui/screens/StartScreen';
 import { LiveBanner } from '../ui/components/LiveBanner';
-import { loadEvents, loadExtras, type LoadedExtras } from './data';
+import { loadEvents, loadExtras, loadMarsData, type LoadedExtras, type LoadedMars } from './data';
 import { useLiveSpaceWeather } from './live';
 import { engine } from './engine';
 import { clearSave, loadGame, saveGame, type SavedGame } from './save';
 import { isStubEvent } from './stub-events';
 import { initialState, newSeed, reducer } from './state';
+import type { SiteId } from '../shared/types';
 
 export function App({
   loadEventsFn = loadEvents,
   loadExtrasFn = loadExtras,
+  loadMarsFn = loadMarsData,
 }: {
   loadEventsFn?: typeof loadEvents;
   loadExtrasFn?: typeof loadExtras;
+  loadMarsFn?: typeof loadMarsData;
 }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const dataButtonRef = useRef<HTMLButtonElement>(null);
   const [saved, setSaved] = useState<SavedGame | null>(null);
   const [extras, setExtras] = useState<LoadedExtras>({ osdr: null, radlab: null });
+  // undefined = still loading, null = unavailable (no placeholder for Mars, ever).
+  const [mars, setMars] = useState<LoadedMars | null | undefined>(undefined);
   const live = useLiveSpaceWeather();
 
   useEffect(() => {
@@ -34,9 +39,15 @@ export function App({
       (r) => {
         if (cancelled) return;
         dispatch({ type: 'loaded', ...r });
-        // Read the save once. Placeholder and real data never mix (data honesty).
         const found = loadGame();
-        if (found && (found.placeholder !== r.isPlaceholder || found.game.events.some(isStubEvent) !== r.isPlaceholder)) {
+        // Placeholder and real data never mix. Mars never has placeholder data, so a Mars save with any is invalid.
+        const stub = found ? found.game.events.some(isStubEvent) : false;
+        const bad =
+          found &&
+          (found.site === 'mars'
+            ? found.placeholder || stub
+            : found.placeholder !== r.isPlaceholder || stub !== r.isPlaceholder);
+        if (bad) {
           clearSave();
           setSaved(null);
         } else {
@@ -65,7 +76,29 @@ export function App({
     };
   }, [loadExtrasFn]);
 
+  useEffect(() => {
+    let cancelled = false;
+    loadMarsFn().then(
+      (m) => {
+        if (cancelled) return;
+        setMars(m);
+        if (m) dispatch({ type: 'marsLoaded', events: m.events, retrievedAt: m.retrievedAt });
+      },
+      () => {
+        if (!cancelled) setMars(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [loadMarsFn]);
+
   const { screen, game, lastResult, allocation } = state;
+  const site: SiteId = state.site;
+
+  useEffect(() => {
+    document.documentElement.dataset.site = site;
+  }, [site]);
 
   // One real OSDR study per mission, chosen from the seed (US-06).
   const factItems = extras.osdr?.items ?? [];
@@ -82,11 +115,12 @@ export function App({
         allocation,
         recentSetIds: state.recentSetIds,
         placeholder: state.isPlaceholder,
+        site: state.site,
       });
     } else if (screen === 'end') {
       clearSave();
     }
-  }, [screen, game, lastResult, allocation, state.crewName, state.recentSetIds, state.isPlaceholder]);
+  }, [screen, game, lastResult, allocation, state.crewName, state.recentSetIds, state.isPlaceholder, state.site]);
 
   // Live preview for the allocator (US-02): what today would do with the current plan.
   const preview = useMemo(() => {
@@ -105,6 +139,7 @@ export function App({
     <>
       <AppShell
         day={dayShown}
+        site={site}
         isPlaceholder={state.isPlaceholder}
         onOpenData={() => dispatch({ type: 'openDataPanel' })}
         dataButtonRef={dataButtonRef}
@@ -118,11 +153,13 @@ export function App({
         {screen === 'error' && <ErrorScreen />}
         {screen === 'start' && (
           <StartScreen
-            onStart={(crewName) => dispatch({ type: 'startMission', seed: newSeed(), crewName })}
+            marsStatus={mars === undefined ? 'loading' : mars ? 'ready' : 'unavailable'}
+            onStart={(crewName, chosen) => dispatch({ type: 'startMission', seed: newSeed(), crewName, site: chosen })}
             resume={
               saved
                 ? {
                     day: saved.game.day,
+                    site: saved.site,
                     crewName: saved.crewName,
                     onResume: () => {
                       dispatch({ type: 'resume', saved });
@@ -167,6 +204,7 @@ export function App({
         isPlaceholder={state.isPlaceholder}
         osdr={extras.osdr}
         radlab={extras.radlab}
+        mars={mars ?? null}
         live={live}
         returnFocusRef={dataButtonRef}
       />

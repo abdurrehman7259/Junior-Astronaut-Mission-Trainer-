@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { formatCheckedTime } from './LiveBanner';
 import type { LiveState } from '../../app/live';
-import type { DoseCalibration, ScienceFact, Snapshot } from '../../shared/types';
+import type { DoseCalibration, MarsSiteInfo, ScienceFact, Snapshot } from '../../shared/types';
 import './DataPanel.css';
 
 export interface DataSourceEntry {
@@ -23,6 +23,8 @@ export interface BuildSourcesInput {
   radlab?: DoseCalibration | null;
   live?: LiveState;
   donkiUrl?: string;
+  /** Present when Mars data is loaded (Mars is active or available). */
+  mars?: { retrievedAt: string; site: MarsSiteInfo | null } | null;
 }
 
 export const DONKI_URL = 'https://ccmc.gsfc.nasa.gov/tools/DONKI/';
@@ -34,7 +36,7 @@ const archived = (iso: string | null | undefined) => `Archived (retrieved ${iso?
  * D-019: the RadLab dose-rate number is deliberately never shown, only the qualitative note.
  */
 export function buildDataSources(input: BuildSourcesInput): DataSourceEntry[] {
-  const { retrievedAt, isPlaceholder, osdr = null, radlab = null, live } = input;
+  const { retrievedAt, isPlaceholder, osdr = null, radlab = null, live, mars = null } = input;
   const donki: DataSourceEntry = {
     id: 'donki',
     name: 'NASA DONKI (space weather)',
@@ -45,8 +47,29 @@ export function buildDataSources(input: BuildSourcesInput): DataSourceEntry[] {
   if (live?.status === 'live' && live.data) {
     donki.extra = `Live feed: checked ${formatCheckedTime(live.data.fetchedAt)} UTC`;
   }
+  const marsEntries: DataSourceEntry[] = [];
+  if (mars) {
+    marsEntries.push({
+      id: 'donki-mars',
+      name: 'NASA DONKI (Mars-impact CMEs)',
+      use: "Real CMEs that NASA's space-weather model predicted would reach Mars.",
+      url: input.donkiUrl ?? DONKI_URL,
+      status: archived(mars.retrievedAt),
+    });
+    if (mars.site) {
+      marsEntries.push({
+        id: 'mars-trek',
+        name: 'NASA Mars Trek (Jezero Crater)',
+        use: 'Maps of Mars. The Mars base in the game sits in Jezero Crater.',
+        url: mars.site.marsTrekUrl,
+        status: archived(mars.site.retrievedAt),
+        extra: mars.site.imageCredit ? `Image credit: ${mars.site.imageCredit}` : undefined,
+      });
+    }
+  }
   return [
     donki,
+    ...marsEntries,
     {
       id: 'osdr',
       name: 'NASA OSDR (Open Science Data Repository)',
@@ -77,12 +100,13 @@ interface Props {
   isPlaceholder: boolean;
   osdr?: Snapshot<ScienceFact> | null;
   radlab?: DoseCalibration | null;
+  mars?: { retrievedAt: string; site: MarsSiteInfo | null } | null;
   live?: LiveState;
   /** Element that gets focus back when the panel closes. */
   returnFocusRef: RefObject<HTMLButtonElement | null>;
 }
 
-export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, radlab, live, returnFocusRef }: Props) {
+export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, radlab, mars, live, returnFocusRef }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -98,7 +122,7 @@ export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, rad
     }
   }, [open, returnFocusRef]);
 
-  const sources = buildDataSources({ retrievedAt, isPlaceholder, osdr, radlab, live });
+  const sources = buildDataSources({ retrievedAt, isPlaceholder, osdr, radlab, live, mars });
 
   return (
     <dialog

@@ -1,4 +1,7 @@
 import { useState, type FormEvent } from 'react';
+import { SITE_IDS, SITES } from '../../shared/sites';
+import type { SiteId } from '../../shared/types';
+import { dayWordCap } from '../../app/state';
 import { ScreenHeading } from '../components/ScreenHeading';
 import { CREW_NAME_MAX, DEFAULT_CREW_NAME, loadCrewName, sanitizeCrewName, saveCrewName } from './crewName';
 import './StartScreen.css';
@@ -21,20 +24,60 @@ function MoonBaseArt() {
   );
 }
 
+const SITE_BLURB: Record<SiteId, string> = {
+  moon: "Run a base near the Moon's south pole. Mission Control warns you before each storm.",
+  mars: 'Run a base in Jezero Crater on Mars. Storm warnings from Earth arrive a sol late.',
+};
+
+function SiteIcon({ site }: { site: SiteId }) {
+  return (
+    <svg className="site-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      {site === 'moon' ? (
+        <>
+          <circle cx="24" cy="24" r="20" fill="#b4b8c6" />
+          <circle cx="17" cy="18" r="4" fill="#8d92a3" />
+          <circle cx="30" cy="30" r="5" fill="#8d92a3" />
+          <circle cx="31" cy="15" r="2.5" fill="#8d92a3" />
+        </>
+      ) : (
+        <>
+          <circle cx="24" cy="24" r="20" fill="#c1502e" />
+          <path d="M8 28 Q24 20 40 30" fill="none" stroke="#8f3a20" strokeWidth="3" />
+          <circle cx="18" cy="16" r="3.5" fill="#9c3f22" />
+          <circle cx="32" cy="34" r="3" fill="#9c3f22" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+export type MarsStatus = 'loading' | 'ready' | 'unavailable';
+
 export interface StartResume {
+  site?: SiteId;
   day: number;
   crewName: string;
   onResume: () => void;
 }
 
-export function StartScreen({ onStart, resume }: { onStart: (crewName: string) => void; resume?: StartResume }) {
+export function StartScreen({
+  onStart,
+  resume,
+  marsStatus = 'unavailable',
+}: {
+  onStart: (crewName: string, site: SiteId) => void;
+  resume?: StartResume;
+  marsStatus?: MarsStatus;
+}) {
   const [name, setName] = useState(() => loadCrewName());
+  const [picked, setPicked] = useState<SiteId>('moon');
+  const site: SiteId = picked === 'mars' && marsStatus !== 'ready' ? 'moon' : picked;
 
   const start = (event?: FormEvent) => {
     event?.preventDefault();
     const finalName = sanitizeCrewName(name).trim() || DEFAULT_CREW_NAME;
     saveCrewName(finalName === DEFAULT_CREW_NAME && !name.trim() ? '' : finalName);
-    onStart(finalName);
+    onStart(finalName, site);
   };
 
   return (
@@ -49,13 +92,50 @@ export function StartScreen({ onStart, resume }: { onStart: (crewName: string) =
         {resume && (
           <div className="start-resume stack">
             <button type="button" className="btn btn-primary btn-large start-button" onClick={resume.onResume}>
-              Continue mission (Day {resume.day})
+              {resume.site === 'mars' ? 'Continue Mars mission' : 'Continue mission'} ({dayWordCap(resume.site ?? 'moon')} {resume.day})
             </button>
             <p>Crew {resume.crewName} is waiting at the base.</p>
           </div>
         )}
 
         <form className="start-form" onSubmit={start}>
+          <div role="radiogroup" aria-labelledby="site-picker-label" className="site-picker">
+            <p id="site-picker-label" className="start-label">
+              Choose your base
+            </p>
+            {SITE_IDS.map((id) => {
+              const disabled = id === 'mars' && marsStatus !== 'ready';
+              const note =
+                id === 'mars' && marsStatus === 'unavailable'
+                  ? 'Coming soon'
+                  : id === 'mars' && marsStatus === 'loading'
+                    ? 'Loading Mars data…'
+                    : null;
+              return (
+                <label key={id} className={`site-card${site === id ? ' is-selected' : ''}${disabled ? ' is-disabled' : ''}`}>
+                  <input
+                    type="radio"
+                    name="site"
+                    value={id}
+                    className="site-radio"
+                    checked={site === id}
+                    disabled={disabled}
+                    aria-labelledby={`site-${id}-name`}
+                    aria-describedby={`site-${id}-desc`}
+                    onChange={() => setPicked(id)}
+                  />
+                  <SiteIcon site={id} />
+                  <span className="site-text">
+                    <strong id={`site-${id}-name`}>{SITES[id].name}</strong>
+                    <span id={`site-${id}-desc`} className="site-desc">
+                      {SITE_BLURB[id]}
+                    </span>
+                    {note && <span className="site-note">{note}</span>}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
           <label htmlFor="crew-name" className="start-label">
             Crew name (optional)
           </label>

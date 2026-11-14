@@ -95,3 +95,20 @@
     --duration-normal: 0ms;
   }
 }
+
+/*
+ * Mars theme (D-023): rust and dusty orange over a dark red-brown night. Set by App on <html data-site="mars">.
+ * Only a few surface and accent tokens change; text, link, system and semantic colours stay as above (link 11.26 / 10.17 / 8.96, shield 8.89 / 8.03 / 7.07, danger 9.21 / 8.33 / 7.33, all still >= 4.5).
+ * Contrast ratios (WCAG 2.x), ratio on bg / surface / surface-2 (all >= 4.5:1 for text):
+ */
+[data-site='mars'] {
+  --color-bg: #1c0f0b; /* dark rust-brown */
+  --color-surface: #2b1812;
+  --color-surface-2: #3a2118;
+  --color-border: #b07a62; /* non-text, needs 3:1: 5.17 bg / 4.67 surface / 4.12 surface-2 */
+  --color-text: #fff3ec; /* 17.18 / 15.52 / 13.67 */
+  --color-text-muted: #e3c4b6; /* 11.44 / 10.34 / 9.10 */
+  --color-accent: #ff9a5c; /* 8.93 / 8.07 / 7.11 as text */
+  --color-accent-hover: #ffb383; /* 10.71 / 9.68 / 8.53; on-accent on hover 10.80 */
+  --color-on-accent: #200c00; /* 9.00 on accent */
+}

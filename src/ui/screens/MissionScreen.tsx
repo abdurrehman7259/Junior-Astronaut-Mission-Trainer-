@@ -1,5 +1,7 @@
 import type { Allocation, GameState, TurnResult } from '../../shared/types';
 import { MISSION_DAYS } from '../../shared/types';
+import { siteOf } from '../../shared/eventSet';
+import { dayWordCap } from '../../app/state';
 import { isStubEvent } from '../../app/stub-events';
 import { EventCard } from '../components/EventCard';
 import { kidTextFor } from '../content/eventCopy';
@@ -33,9 +35,9 @@ export function MissionScreen({ game, crewName, allocation, preview, lastResult,
     <section className="mission stack">
       <div className="mission-head">
         <ScreenHeading>
-          Day {game.day} of {MISSION_DAYS}
+          {dayWordCap(siteOf(game))} {game.day} of {MISSION_DAYS}
         </ScreenHeading>
-        <p className="mission-crew">Crew: {crewName}</p>
+        <p className="mission-crew">Crew: {crewName} · {siteOf(game) === 'mars' ? 'Mars base, Jezero Crater' : 'Moon base, south pole'}</p>
       </div>
 
       <div className="mission-grid">

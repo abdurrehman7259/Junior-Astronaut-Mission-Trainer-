@@ -1,4 +1,7 @@
 import type { GameState, ScienceFact, TurnResult } from '../../shared/types';
+import { siteOf } from '../../shared/eventSet';
+import { SITES } from '../../shared/sites';
+import { dayWordCap } from '../../app/state';
 import { isStubEvent } from '../../app/stub-events';
 import { ScreenHeading } from '../components/ScreenHeading';
 import { Meters } from '../components/Meters';
@@ -52,14 +55,16 @@ function HealthChange({ delta }: { delta: number }) {
 /** Mission debrief (US-06, FR-09, FR-10). */
 export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScreenProps) {
   const won = game.status === 'won';
+  const site = siteOf(game);
+  const Word = dayWordCap(site);
 
   return (
     <section className="stack end-screen">
       <ScreenHeading>{won ? 'You made it!' : 'Mission Control brings the crew home safely.'}</ScreenHeading>
       <p className="end-outcome">
         {won
-          ? `Crew ${crewName} ran the Moon base for all ${game.history.length} days.`
-          : `Crew ${crewName} kept going for ${game.history.length} days. Try a new plan next time!`}
+          ? `Crew ${crewName} ran the ${SITES[site].name} base for all ${game.history.length} ${SITES[site].dayWord}s.`
+          : `Crew ${crewName} kept going for ${game.history.length} ${SITES[site].dayWord}s. Try a new plan next time!`}
       </p>
 
       <div className="card stack">
@@ -69,7 +74,7 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
 
       <div className="card stack">
         <h2>What really happened</h2>
-        <ol className="debrief-list" aria-label="Day by day">
+        <ol className="debrief-list" aria-label={`${Word} by ${SITES[site].dayWord}`}>
           {game.history.map((r) => {
             const storm = r.event.kind !== 'QUIET';
             const stub = isStubEvent(r.event);
@@ -77,7 +82,7 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
             return (
               <li key={r.day} className="debrief-row">
                 <p className="debrief-title">
-                  <strong>Day {r.day}</strong>
+                  <strong>{Word} {r.day}</strong>
                   <span>{KIND_WORDS[r.event.kind]}</span>
                 </p>
                 <p className="debrief-meta">

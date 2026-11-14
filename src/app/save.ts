@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { AllocationSchema, GameStateSchema, TurnResultSchema } from '../shared/schemas';
-import type { Allocation, GameState, TurnResult } from '../shared/types';
+import type { Allocation, GameState, SiteId, TurnResult } from '../shared/types';
 
 /** Save slot for resuming a mission (FR-14). Game progress only; the crew name is local-only. */
 export const SAVE_KEY = 'mbc.save.v1';
@@ -15,6 +15,8 @@ export interface SavedGame {
   allocation: Allocation;
   recentSetIds: string[];
   placeholder: boolean;
+  /** Which base this mission is on. Old saves have none: that means the Moon. */
+  site?: SiteId;
 }
 
 const SavedGameSchema = z
@@ -28,6 +30,7 @@ const SavedGameSchema = z
     allocation: AllocationSchema,
     recentSetIds: z.array(z.string()).max(3),
     placeholder: z.boolean(),
+    site: z.enum(['moon', 'mars']).optional(),
   })
   .refine((s) => (s.screen === 'mission' ? s.game.status === 'playing' : s.lastResult !== null), {
     message: 'screen does not match game state',
@@ -61,7 +64,10 @@ export function loadGame(): SavedGame | null {
   if (raw === null) return null;
   try {
     const parsed = SavedGameSchema.safeParse(JSON.parse(raw));
-    if (parsed.success) return parsed.data as SavedGame;
+    if (parsed.success) {
+      const data = parsed.data;
+      return { ...data, site: data.site ?? data.game.site ?? 'moon' } as SavedGame;
+    }
   } catch {
     // Invalid JSON: fall through.
   }

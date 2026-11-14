@@ -1,5 +1,6 @@
-import { eventSetIdOf, isValidAllocation } from '../shared/eventSet';
-import type { Allocation, GameState, SolarEvent, TurnResult } from '../shared/types';
+import { eventSetIdOf, isValidAllocation, siteOf } from '../shared/eventSet';
+import { SITES } from '../shared/sites';
+import type { Allocation, GameState, SiteId, SolarEvent, TurnResult } from '../shared/types';
 import { engine } from './engine';
 import type { SavedGame } from './save';
 
@@ -12,26 +13,41 @@ export type Screen = 'loading' | 'start' | 'mission' | 'report' | 'end' | 'error
 export const DEFAULT_ALLOCATION: Allocation = { life: 4, shield: 3, science: 3 };
 export const DEFAULT_CREW = 'Cadets';
 
+/** "Day" or "Sol", capitalised, for the given site. */
+export function dayWordCap(site: SiteId): string {
+  const w = SITES[site].dayWord;
+  return w.charAt(0).toUpperCase() + w.slice(1);
+}
+
 export interface AppState {
   screen: Screen;
-  pool: SolarEvent[];
+  /** The site of the current or next mission. */
+  site: SiteId;
+  /** Event pool per site. A site with no pool is unavailable. */
+  pools: Partial<Record<SiteId, SolarEvent[]>>;
   isPlaceholder: boolean;
+  /** Retrieval time of the Moon snapshot (kept for the banner and the Data panel). */
   retrievedAt: string | null;
+  /** Retrieval time per site. */
+  retrievedBySite: Partial<Record<SiteId, string | null>>;
   crewName: string;
   game: GameState | null;
   lastResult: TurnResult | null;
   /** The plan on the allocator. Carries over from the previous day (D-011). Always valid. */
   allocation: Allocation;
-  /** Ids of the last 3 drawn event sets, newest last. */
+  /** Ids of the last 3 event sets drawn for the current site, newest last. */
   recentSetIds: string[];
+  /** The same, remembered per site. */
+  recentBySite: Partial<Record<SiteId, string[]>>;
   dataPanelOpen: boolean;
 }
 
 export type Action =
   | { type: 'loaded'; events: SolarEvent[]; retrievedAt: string | null; isPlaceholder: boolean }
+  | { type: 'marsLoaded'; events: SolarEvent[]; retrievedAt: string }
   | { type: 'loadFailed' }
   | { type: 'resume'; saved: SavedGame }
-  | { type: 'startMission'; seed: number; crewName?: string }
+  | { type: 'startMission'; seed: number; crewName?: string; site?: SiteId }
   | { type: 'setAllocation'; allocation: Allocation }
   | { type: 'playDay'; allocation: Allocation }
   | { type: 'continue' }
@@ -41,35 +57,42 @@ export type Action =
 
 export const initialState: AppState = {
   screen: 'loading',
-  pool: [],
+  site: 'moon',
+  pools: {},
   isPlaceholder: false,
   retrievedAt: null,
+  retrievedBySite: {},
   crewName: DEFAULT_CREW,
   game: null,
   lastResult: null,
   allocation: DEFAULT_ALLOCATION,
   recentSetIds: [],
+  recentBySite: {},
   dataPanelOpen: false,
 };
 
 const RECENT_KEEP = 3;
 
 function begin(state: AppState, seed: number): AppState {
+  const site = state.site;
+  const recent = state.recentBySite[site] ?? [];
   let set: SolarEvent[];
   try {
-    set = engine.drawEventSet(state.pool, seed, state.recentSetIds);
+    set = engine.drawEventSet(state.pools[site] ?? [], seed, recent);
   } catch {
     // Pool can't satisfy the draw rules (e.g. a bad snapshot): show the friendly error screen.
     return { ...state, screen: 'error', game: null, lastResult: null };
   }
-  const game = engine.createGame(seed, set);
+  const game = engine.createGame(seed, set, site);
+  const nextRecent = [...recent, eventSetIdOf(set)].slice(-RECENT_KEEP);
   return {
     ...state,
     screen: 'mission',
     game,
     lastResult: null,
     allocation: DEFAULT_ALLOCATION,
-    recentSetIds: [...state.recentSetIds, eventSetIdOf(set)].slice(-RECENT_KEEP),
+    recentSetIds: nextRecent,
+    recentBySite: { ...state.recentBySite, [site]: nextRecent },
   };
 }
 
@@ -79,24 +102,40 @@ export function reducer(state: AppState, action: Action): AppState {
       return {
         ...state,
         screen: 'start',
-        pool: action.events,
+        pools: { ...state.pools, moon: action.events },
         retrievedAt: action.retrievedAt,
+        retrievedBySite: { ...state.retrievedBySite, moon: action.retrievedAt },
         isPlaceholder: action.isPlaceholder,
+      };
+    case 'marsLoaded':
+      return {
+        ...state,
+        pools: { ...state.pools, mars: action.events },
+        retrievedBySite: { ...state.retrievedBySite, mars: action.retrievedAt },
       };
     case 'loadFailed':
       return { ...state, screen: 'error' };
-    case 'resume':
+    case 'resume': {
+      const site = siteOf(action.saved.game);
       return {
         ...state,
+        site,
         screen: action.saved.screen,
         crewName: action.saved.crewName,
         game: action.saved.game,
         lastResult: action.saved.lastResult,
         allocation: { ...action.saved.allocation },
         recentSetIds: [...action.saved.recentSetIds],
+        recentBySite: { ...state.recentBySite, [site]: [...action.saved.recentSetIds] },
       };
-    case 'startMission':
-      return begin({ ...state, crewName: action.crewName?.trim() || DEFAULT_CREW }, action.seed);
+    }
+    case 'startMission': {
+      const site = action.site ?? 'moon';
+      return begin(
+        { ...state, site, crewName: action.crewName?.trim() || DEFAULT_CREW },
+        action.seed,
+      );
+    }
     case 'playAgain':
       return begin(state, action.seed);
     case 'setAllocation':

@@ -1,8 +1,10 @@
 import type { ReactNode, RefObject } from 'react';
-import { MISSION_DAYS } from '../../shared/types';
+import { dayWordCap } from '../../app/state';
+import { MISSION_DAYS, type SiteId } from '../../shared/types';
 
 interface Props {
   day: number | null;
+  site?: SiteId;
   isPlaceholder: boolean;
   onOpenData: () => void;
   dataButtonRef: RefObject<HTMLButtonElement | null>;
@@ -11,7 +13,7 @@ interface Props {
   children: ReactNode;
 }
 
-export function AppShell({ day, isPlaceholder, onOpenData, dataButtonRef, banner, children }: Props) {
+export function AppShell({ day, site = 'moon', isPlaceholder, onOpenData, dataButtonRef, banner, children }: Props) {
   return (
     <>
       <a className="skip-link" href="#main">
@@ -28,7 +30,7 @@ export function AppShell({ day, isPlaceholder, onOpenData, dataButtonRef, banner
           <div className="app-header-actions">
             {day !== null && (
               <span className="day-indicator">
-                Day {day} of {MISSION_DAYS}
+                {dayWordCap(site)} {day} of {MISSION_DAYS}
               </span>
             )}
             <button ref={dataButtonRef} type="button" className="btn btn-secondary" onClick={onOpenData}>
