@@ -1,6 +1,8 @@
 import type { Allocation, GameState, TurnResult } from '../../shared/types';
 import { MISSION_DAYS } from '../../shared/types';
+import { isStubEvent } from '../../app/stub-events';
 import { EventCard } from '../components/EventCard';
+import { kidTextFor } from '../content/eventCopy';
 import { GlossaryTerm } from '../components/GlossaryTerm';
 import { Meters } from '../components/Meters';
 import { PowerAllocator } from '../components/PowerAllocator';
@@ -38,7 +40,7 @@ export function MissionScreen({ game, crewName, allocation, preview, lastResult,
 
       <div className="mission-grid">
         <div className="mission-col stack">
-          <EventCard event={event} day={game.day} />
+          <EventCard event={event} day={game.day} kidText={isStubEvent(event) ? undefined : kidTextFor(event)} />
           <p className="mission-words">
             Words to know: <GlossaryTerm k="solarFlare" />, <GlossaryTerm k="cme" />, <GlossaryTerm k="dose" />,{' '}
             <GlossaryTerm k="shielding" />.
