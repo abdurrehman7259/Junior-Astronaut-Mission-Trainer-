@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -70,5 +72,21 @@ describe('GlossaryTerm', () => {
     await user.click(screen.getByRole('button'));
     await user.click(screen.getByText('elsewhere'));
     expect(screen.getByRole('button').getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('Mars glossary entries', () => {
+  const marsSources = JSON.parse(
+    readFileSync(resolve(__dirname, '../../public/data/mars-site.json'), 'utf8'),
+  ).sources as { url: string }[];
+
+  it.each(['sol', 'commDelay', 'jezero'] as const)('%s uses a source listed in mars-site.json', (k) => {
+    expect(marsSources.map((s) => s.url)).toContain(GLOSSARY[k].sourceUrl);
+  });
+
+  it('has the expected terms', () => {
+    expect(GLOSSARY.commDelay.term).toBe('Communication delay');
+    expect(GLOSSARY.jezero.term).toBe('Jezero Crater');
+    expect(GLOSSARY.sol.definition).toBe('A sol is one day on Mars. It is a little longer than an Earth day.');
   });
 });

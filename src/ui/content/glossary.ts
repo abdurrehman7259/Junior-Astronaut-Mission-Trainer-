@@ -1,4 +1,4 @@
-export type GlossaryKey = 'dose' | 'solarFlare' | 'cme' | 'shielding' | 'sol';
+export type GlossaryKey = 'dose' | 'solarFlare' | 'cme' | 'shielding' | 'sol' | 'commDelay' | 'jezero';
 
 export interface GlossaryEntry {
   term: string;
@@ -35,9 +35,21 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
   },
   sol: {
     term: 'Sol',
-    definition: 'Sol is a space word for a day on Mars.',
-    sourceTitle: 'NASA Mars',
-    sourceUrl: 'https://mars.nasa.gov/',
+    definition: 'A sol is one day on Mars. It is a little longer than an Earth day.',
+    sourceTitle: 'NASA: Barsoom, definition and length of a Martian sol',
+    sourceUrl: 'https://www.nasa.gov/image-article/barsoom/',
+  },
+  commDelay: {
+    term: 'Communication delay',
+    definition: 'Radio messages between Earth and Mars take about 4 to 24 minutes one way.',
+    sourceTitle: 'NASA NTRS: Why Moon to Mars (2025 IAC), one-way light-time',
+    sourceUrl: 'https://ntrs.nasa.gov/api/citations/20250009282/downloads/2025%20IAC%20-%20Why%20Moon%20and%20Mars%20-%200916%20Edits.pdf',
+  },
+  jezero: {
+    term: 'Jezero Crater',
+    definition: 'Jezero is a Mars crater that once held a lake. Perseverance landed there in 2021.',
+    sourceTitle: 'NASA: Perseverance landing site, ancient Jezero lake',
+    sourceUrl: 'https://science.nasa.gov/mission/mars-2020-perseverance/',
   },
 };
 

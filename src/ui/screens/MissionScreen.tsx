@@ -66,8 +66,17 @@ export function MissionScreen({
             <EventCard event={event} day={game.day} kidText={isStubEvent(event) ? undefined : kidTextFor(event)} />
           )}
           <p className="mission-words">
-            Words to know: <GlossaryTerm k="solarFlare" />, <GlossaryTerm k="cme" />, <GlossaryTerm k="dose" />,{' '}
-            <GlossaryTerm k="shielding" />.
+            {isMars ? (
+              <>
+                Words to know: <GlossaryTerm k="sol" />, <GlossaryTerm k="commDelay" />,{' '}
+                <GlossaryTerm k="jezero" />, <GlossaryTerm k="cme" />, <GlossaryTerm k="dose" />.
+              </>
+            ) : (
+              <>
+                Words to know: <GlossaryTerm k="solarFlare" />, <GlossaryTerm k="cme" />, <GlossaryTerm k="dose" />,{' '}
+                <GlossaryTerm k="shielding" />.
+              </>
+            )}
           </p>
           <Meters meters={game.meters} scienceScore={game.scienceScore} deltas={deltas} />
           {dueToday.length > 0 && (

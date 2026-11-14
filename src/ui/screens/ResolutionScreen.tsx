@@ -90,7 +90,7 @@ export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }:
             event={event}
             day={result.day}
             dayWord="sol"
-            kidText={isStubEvent(event) ? undefined : kidTextFor(event)}
+            kidText={isStubEvent(event) ? undefined : kidTextFor(event, site)}
           />
           {event.severity >= 1 && (
             <p className="res-late">The warning came too late to plan for it. That's life far from Earth!</p>
