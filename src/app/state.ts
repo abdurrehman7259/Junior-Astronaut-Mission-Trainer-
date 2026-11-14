@@ -169,9 +169,17 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 
-/** A fresh seed for a new mission. Call outside the reducer. */
+/**
+ * A fresh seed for a new mission. Call outside the reducer (the engine itself stays pure).
+ * Some sandboxed browsers throw OperationError from getRandomValues (seen in Playwright's
+ * Firefox), so fall back to Math.random: a seed only picks the event set, it is not a secret.
+ */
 export function newSeed(): number {
-  const buf = new Uint32Array(1);
-  crypto.getRandomValues(buf);
-  return buf[0]!;
+  try {
+    const buf = new Uint32Array(1);
+    crypto.getRandomValues(buf);
+    return buf[0]!;
+  } catch {
+    return Math.floor(Math.random() * 0x1_0000_0000) >>> 0;
+  }
 }

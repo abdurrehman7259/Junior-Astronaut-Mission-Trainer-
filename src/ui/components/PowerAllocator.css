@@ -36,12 +36,16 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr;
+  /* minmax(0, …): a plain 1fr track never shrinks below min-content, so at 360 px the rows
+     overflowed the list (by 11 px in Firefox). A3/Gate 3, NFR-08. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
 }
 .pa-row {
   --pa-color: var(--color-text);
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
   gap: var(--space-3);
   padding: var(--space-4);
   background: var(--color-surface-2);

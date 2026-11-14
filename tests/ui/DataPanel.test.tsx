@@ -86,6 +86,23 @@ describe('DataPanel', () => {
     }
     expect(dlg.textContent).not.toMatch(/631|µGy/);
   });
+
+  it('returns focus to the opener even when the browser already closed the dialog (Firefox Esc)', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    const props = { onClose: () => {}, retrievedAt: '2026-11-14T08:14:30Z', isPlaceholder: false, returnFocusRef: { current: opener } };
+    const { rerender, container } = render(<DataPanel open {...props} />);
+    container.querySelector('dialog')!.removeAttribute('open'); // closed natively before React re-rendered
+    expect(document.activeElement).not.toBe(opener);
+    rerender(<DataPanel open={false} {...props} />);
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it('shows Not loaded, never an unknown archived date, when the snapshot has not loaded', () => {
+    const donki = buildDataSources({ retrievedAt: null, isPlaceholder: false }).find((e) => e.id === 'donki')!;
+    expect(donki.status).toBe('Not loaded');
+  });
 });
 
 describe('LiveBanner', () => {

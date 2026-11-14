@@ -30,7 +30,7 @@ Before you start:
 - Open **Deploys** → the failed deploy → **Deploy log**. Copy the last 30 lines to lead agent. They never contain the key; Netlify masks env values.
 - Common causes: the Node version (we pin `NODE_VERSION = "24"` in `netlify.toml`), or a lockfile mismatch (fix by running `npm install` locally, committing `package-lock.json` and pushing).
 
-## 3. 15-minute post-deploy smoke checklist
+## 3. 15-minute post-deploy smoke checklist (17 min with the optional Safari check)
 Use a **private/incognito window**, with no login.
 
 | # | Check (min) | Pass if |
@@ -46,6 +46,7 @@ Use a **private/incognito window**, with no login.
 | 9 | DevTools → **Network** and **Console** (1) | Every request goes to your netlify.app domain. There are **no third-party domains** (NASA links only open when clicked). The Console shows no "Content Security Policy" errors. |
 | 10 | DevTools → **Application** → Cookies (0.5) | None. Local storage has only `mbc.*` keys. |
 | 11 | Offline (1) | DevTools → Network → Offline → reload is not expected to work. Instead go offline *after* loading and play a day: the game keeps working. |
+| 12 | **Safari / iPad**, if you have one (2) | Start a mission and play 2 days. Nothing is cut off, and the buttons work by touch. (Not testable locally: D-033.) |
 
 Write the results (pass/fail plus a note) into STATUS.md under "Deployed smoke test", or send them to lead agent.
 

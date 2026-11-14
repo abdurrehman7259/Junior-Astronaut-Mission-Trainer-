@@ -125,17 +125,27 @@ interface Props {
 
 export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, radlab, mars, live, returnFocusRef }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
+  const wasOpen = useRef(false);
 
   useEffect(() => {
     const dlg = ref.current;
     if (!dlg) return;
-    if (open && !dlg.open) {
+    if (open) {
+      wasOpen.current = true;
+      if (dlg.open) return;
       if (typeof dlg.showModal === 'function') dlg.showModal();
       else dlg.setAttribute('open', '');
-    } else if (!open && dlg.open) {
-      if (typeof dlg.close === 'function') dlg.close();
-      else dlg.removeAttribute('open');
-      returnFocusRef.current?.focus();
+    } else {
+      if (dlg.open) {
+        if (typeof dlg.close === 'function') dlg.close();
+        else dlg.removeAttribute('open');
+      }
+      // Firefox may close the dialog itself on Esc (despite preventDefault), so return
+      // focus whenever it was open, not only when we closed it here.
+      if (wasOpen.current) {
+        wasOpen.current = false;
+        returnFocusRef.current?.focus();
+      }
     }
   }, [open, returnFocusRef]);
 
