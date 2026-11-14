@@ -1,51 +1,125 @@
-import type { GameState } from '../../shared/types';
+import type { GameState, ScienceFact, TurnResult } from '../../shared/types';
 import { isStubEvent } from '../../app/stub-events';
 import { ScreenHeading } from '../components/ScreenHeading';
-import { formatRealDate, KIND_WORDS } from '../components/EventCard';
+import { Meters } from '../components/Meters';
+import { formatRealDate, KIND_WORDS, SEVERITY_WORDS } from '../components/EventCard';
+import './EndScreen.css';
 
-interface Props {
+export interface EndScreenProps {
   game: GameState;
   crewName: string;
   onPlayAgain: () => void;
+  /** One real OSDR study for this mission, or null if facts failed to load. */
+  fact?: ScienceFact | null;
 }
 
-/** Gate 2 end screen (FR-08). The full debrief (F5) replaces the body in stage 2. */
-export function EndScreen({ game, crewName, onPlayAgain }: Props) {
+/** One reflection line chosen from the played days (FR-10). Pure. */
+export function pickReflection(history: TurnResult[]): string {
+  const hurtOnStorm = history.some(
+    (r) => r.event.kind !== 'QUIET' && r.deltas.crewHealth < 0 && r.allocation.shield < 3,
+  );
+  if (hurtOnStorm) return 'Tip: more shielding on big storm days protects your crew.';
+
+  const quiet = history.filter((r) => r.event.kind === 'QUIET');
+  const noScience = quiet.filter((r) => r.allocation.science === 0).length;
+  if (quiet.length > 0 && noScience * 2 > quiet.length) return 'Tip: quiet days are great for science.';
+
+  return 'Great balancing!';
+}
+
+function HealthChange({ delta }: { delta: number }) {
+  if (delta === 0) {
+    return (
+      <span className="debrief-health">
+        <span aria-hidden="true">● 0</span>
+        <span className="visually-hidden">Crew health: no change</span>
+      </span>
+    );
+  }
+  const up = delta > 0;
+  return (
+    <span className={`debrief-health ${up ? 'is-up' : 'is-down'}`}>
+      <span aria-hidden="true">
+        {up ? '▲' : '▼'} {Math.abs(delta)}
+      </span>
+      <span className="visually-hidden">
+        Crew health {up ? 'went up' : 'went down'} by {Math.abs(delta)}
+      </span>
+    </span>
+  );
+}
+
+/** Mission debrief (US-06, FR-09, FR-10). */
+export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScreenProps) {
   const won = game.status === 'won';
-  const storms = game.history.filter((r) => r.event.kind !== 'QUIET');
 
   return (
-    <section className="stack">
+    <section className="stack end-screen">
       <ScreenHeading>{won ? 'You made it!' : 'Mission Control brings the crew home safely.'}</ScreenHeading>
-      <p>
+      <p className="end-outcome">
         {won
           ? `Crew ${crewName} ran the Moon base for all ${game.history.length} days.`
           : `Crew ${crewName} kept going for ${game.history.length} days. Try a new plan next time!`}
       </p>
-      <p className="end-score">
-        Science score: <strong>{game.scienceScore}</strong>
-      </p>
 
-      {storms.length > 0 && (
-        <div className="card stack">
-          <h2>What really happened</h2>
-          <ul>
-            {storms.map((r) => (
-              <li key={r.event.id}>
-                Day {r.day}: {KIND_WORDS[r.event.kind]} on {formatRealDate(r.event.realDate)}
-                {isStubEvent(r.event) ? ' (placeholder)' : ''}.{' '}
-                <a href={r.event.sourceUrl} target="_blank" rel="noopener noreferrer">
-                  See the NASA record<span className="visually-hidden"> (opens in a new tab)</span>
-                </a>
+      <div className="card stack">
+        <h2>Final status</h2>
+        <Meters meters={game.meters} scienceScore={game.scienceScore} />
+      </div>
+
+      <div className="card stack">
+        <h2>What really happened</h2>
+        <ol className="debrief-list" aria-label="Day by day">
+          {game.history.map((r) => {
+            const storm = r.event.kind !== 'QUIET';
+            const stub = isStubEvent(r.event);
+            const { life, shield, science } = r.allocation;
+            return (
+              <li key={r.day} className="debrief-row">
+                <p className="debrief-title">
+                  <strong>Day {r.day}</strong>
+                  <span>{KIND_WORDS[r.event.kind]}</span>
+                </p>
+                <p className="debrief-meta">
+                  {formatRealDate(r.event.realDate)}
+                  {stub ? ' (placeholder)' : ''} · {SEVERITY_WORDS[r.event.severity]}
+                </p>
+                <p className="debrief-meta">
+                  Life {life} · Shield {shield} · Science {science}
+                </p>
+                <p className="debrief-meta">
+                  <HealthChange delta={r.deltas.crewHealth} />
+                </p>
+                {storm && (
+                  <a className="debrief-link" href={r.event.sourceUrl} target="_blank" rel="noopener noreferrer">
+                    See the NASA record<span className="visually-hidden"> (opens in a new tab)</span>
+                  </a>
+                )}
               </li>
-            ))}
-          </ul>
+            );
+          })}
+        </ol>
+        <p className="debrief-tip">{pickReflection(game.history)}</p>
+      </div>
+
+      {fact && (
+        <div className="card stack debrief-fact">
+          <p className="debrief-label">From NASA&apos;s Open Science Data Repository</p>
+          <h2>Real NASA science</h2>
+          <p>{fact.text}</p>
+          <p className="debrief-meta">Study: {fact.studyTitle}</p>
+          <a className="debrief-link" href={fact.osdrUrl} target="_blank" rel="noopener noreferrer">
+            Read about this study<span className="visually-hidden"> (opens in a new tab)</span>
+          </a>
         </div>
       )}
 
-      <button type="button" className="btn btn-primary btn-large" onClick={onPlayAgain}>
-        Play again
-      </button>
+      <div className="stack end-actions">
+        <button type="button" className="btn btn-primary btn-large" onClick={onPlayAgain}>
+          Play again
+        </button>
+        <p className="debrief-meta">You&apos;ll get a new set of real space weather.</p>
+      </div>
     </section>
   );
 }
