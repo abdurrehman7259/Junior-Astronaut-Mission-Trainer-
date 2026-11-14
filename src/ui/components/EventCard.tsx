@@ -10,6 +10,8 @@ export interface EventCardProps {
   day: number;
   /** Optional override of event.kidText (the F7 copy layer). */
   kidText?: string;
+  /** "sol" on Mars. Default "day". */
+  dayWord?: 'day' | 'sol';
 }
 
 export const KIND_WORDS: Record<SolarEventKind, string> = {
@@ -17,6 +19,11 @@ export const KIND_WORDS: Record<SolarEventKind, string> = {
   CME: 'Solar storm cloud (CME)',
   QUIET: 'Quiet Sun day',
 };
+
+/** Kind label for the given site word ("Quiet Sun day" or "Quiet Sun sol"). */
+export function kindWordFor(kind: SolarEventKind, dayWord: 'day' | 'sol' = 'day'): string {
+  return kind === 'QUIET' ? `Quiet Sun ${dayWord}` : KIND_WORDS[kind];
+}
 
 export const SEVERITY_WORDS: Record<Severity, string> = {
   0: 'Calm',
@@ -46,7 +53,7 @@ function detailOf(event: SolarEvent): string | null {
   return null;
 }
 
-export function EventCard({ event, day, kidText }: EventCardProps) {
+export function EventCard({ event, day, kidText, dayWord = 'day' }: EventCardProps) {
   const headingId = useId();
   const stub = isStubEvent(event);
   const detail = detailOf(event);
@@ -56,7 +63,9 @@ export function EventCard({ event, day, kidText }: EventCardProps) {
     <section className="event-card card" aria-labelledby={headingId}>
       <h2 id={headingId} className="event-card-title">
         <SunIcon className="event-card-title-icon" />
-        <span>Day {day} space weather</span>
+        <span>
+          {dayWord === 'sol' ? 'Sol' : 'Day'} {day} space weather
+        </span>
       </h2>
 
       <p className={`event-badge ${stub ? 'is-stub' : 'is-real'}`}>
@@ -67,7 +76,7 @@ export function EventCard({ event, day, kidText }: EventCardProps) {
       <dl className="event-facts">
         <div className="event-fact">
           <dt>What</dt>
-          <dd className="event-kind">{KIND_WORDS[event.kind]}</dd>
+          <dd className="event-kind">{kindWordFor(event.kind, dayWord)}</dd>
         </div>
         <div className="event-fact">
           <dt>{stub ? 'Placeholder date:' : 'Real date:'}</dt>
@@ -88,6 +97,13 @@ export function EventCard({ event, day, kidText }: EventCardProps) {
       </dl>
 
       <p className="event-text">{kidText ?? event.kidText}</p>
+
+      {dayWord === 'sol' && event.marsImpact === 'listed' && (
+        <p className="event-mars-note">NASA's model predicted this storm would reach Mars.</p>
+      )}
+      {dayWord === 'sol' && event.marsImpact === 'game-only' && (
+        <p className="event-mars-note">Recorded by NASA. In the game, this storm also reaches Mars.</p>
+      )}
 
       <a className="event-link" href={event.sourceUrl} target="_blank" rel="noopener noreferrer">
         See the NASA record

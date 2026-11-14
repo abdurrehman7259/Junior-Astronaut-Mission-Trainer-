@@ -128,3 +128,26 @@
     padding-inline: var(--space-4);
   }
 }
+
+.res-reveal {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-accent);
+  border-radius: var(--radius-md);
+}
+.res-reveal-icon {
+  flex: none;
+  color: var(--color-accent);
+}
+.res-late {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-warning);
+}

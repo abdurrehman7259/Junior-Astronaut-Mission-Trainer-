@@ -86,3 +86,9 @@
   min-height: var(--touch-target);
   font-weight: 700;
 }
+
+.event-mars-note {
+  margin: 0;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}

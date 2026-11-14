@@ -198,3 +198,9 @@
     align-self: flex-start;
   }
 }
+
+.pa-preview-warn {
+  margin: 0 0 var(--space-3);
+  font-weight: 700;
+  color: var(--color-warning);
+}

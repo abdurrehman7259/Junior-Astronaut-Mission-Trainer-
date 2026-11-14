@@ -179,6 +179,8 @@ export function App({
             lastResult={lastResult}
             onAllocationChange={(a) => dispatch({ type: 'setAllocation', allocation: a })}
             onConfirm={() => dispatch({ type: 'playDay', allocation })}
+            site={site}
+            marsSite={mars?.site ?? null}
           />
         )}
         {screen === 'report' && lastResult && (
@@ -186,6 +188,7 @@ export function App({
             result={lastResult}
             isFinal={lastResult.statusAfter !== 'playing'}
             onContinue={() => dispatch({ type: 'continue' })}
+            site={site}
           />
         )}
         {screen === 'end' && game && (

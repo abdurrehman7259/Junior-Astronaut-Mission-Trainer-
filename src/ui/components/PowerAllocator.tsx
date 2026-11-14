@@ -1,5 +1,5 @@
 import { useState, type JSX, type ReactNode } from 'react';
-import type { Allocation, MeterKey, SystemKey, TurnResult } from '../../shared/types';
+import type { Allocation, MeterKey, SiteId, SystemKey, TurnResult } from '../../shared/types';
 import { POWER_UNITS_PER_DAY } from '../../shared/types';
 import {
   BALANCED_DRAFT,
@@ -25,6 +25,8 @@ export interface PowerAllocatorProps {
   /** For the button label. */
   day: number;
   disabled?: boolean;
+  /** On Mars the preview assumes a calm Sun, because the storm warning arrives a sol late. Default "moon". */
+  site?: SiteId;
 }
 
 interface SystemInfo {
@@ -134,11 +136,11 @@ function PreviewRow({ name, delta, after }: { name: string; delta: number; after
   );
 }
 
-function PreviewPanel({ preview }: { preview: TurnResult }) {
+function PreviewPanel({ preview, site }: { preview: TurnResult; site: SiteId }) {
   const { deltas, after, dose, explanations } = preview;
   return (
     <>
-      <h3 className="pa-preview-title">If you run this plan:</h3>
+      <h3 className="pa-preview-title">{site === 'mars' ? 'If the Sun stays calm:' : 'If you run this plan:'}</h3>
       <ul className="pa-preview-list">
         {METER_ROWS.map((m) => (
           <PreviewRow key={m.key} name={m.name} delta={deltas[m.key]} after={after[m.key]} />
@@ -152,6 +154,7 @@ function PreviewPanel({ preview }: { preview: TurnResult }) {
       {dose.received > 0 && (
         <p className="pa-dose">Radiation reaching the crew: {dose.received}</p>
       )}
+      {site === 'mars' && <p className="pa-preview-warn">Storms could make this worse.</p>}
       <ul className="pa-explain">
         <li>{explanations.power}</li>
         <li>{explanations.lifeSupport}</li>
@@ -169,6 +172,7 @@ export function PowerAllocator({
   onConfirm,
   day,
   disabled = false,
+  site = 'moon',
 }: PowerAllocatorProps): JSX.Element {
   const [draft, setDraft] = useState<Draft>(value);
   const [seenValue, setSeenValue] = useState<Allocation>(value);
@@ -285,7 +289,7 @@ export function PowerAllocator({
 
       <div className="pa-preview" aria-live="polite">
         {complete && preview ? (
-          <PreviewPanel preview={preview} />
+          <PreviewPanel preview={preview} site={site} />
         ) : (
           <p className="pa-preview-hint">
             {complete ? '' : `Share all ${POWER_UNITS_PER_DAY} units to see what happens.`}
@@ -299,7 +303,7 @@ export function PowerAllocator({
         disabled={disabled || !complete}
         onClick={onConfirm}
       >
-        Run day {day}
+        Run {site === 'mars' ? 'sol' : 'day'} {day}
       </button>
     </section>
   );

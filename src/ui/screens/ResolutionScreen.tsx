@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
-import type { TurnResult } from '../../shared/types';
-import { KIND_WORDS, SEVERITY_WORDS, formatRealDate } from '../components/EventCard';
-import { BatteryIcon, FlaskIcon, HeartIcon, LeafIcon, RadiationIcon } from '../components/icons';
+import type { SiteId, TurnResult } from '../../shared/types';
+import { isStubEvent } from '../../app/stub-events';
+import { EventCard, SEVERITY_WORDS, formatRealDate, kindWordFor } from '../components/EventCard';
+import { kidTextFor } from '../content/eventCopy';
+import { BatteryIcon, FlaskIcon, HeartIcon, InfoIcon, LeafIcon, RadiationIcon } from '../components/icons';
 import { ScreenHeading } from '../components/ScreenHeading';
 import './ResolutionScreen.css';
 
@@ -11,6 +13,8 @@ export interface ResolutionScreenProps {
   isFinal: boolean;
   /** "Next day" (or "See how the mission went" when isFinal). */
   onContinue: () => void;
+  /** "mars": Sol wording, and today's hidden event is revealed here. Default "moon". */
+  site?: SiteId;
 }
 
 interface RowProps {
@@ -64,19 +68,43 @@ function Row({ className, icon, label, before, after, explanation }: RowProps) {
   );
 }
 
-export function ResolutionScreen({ result, isFinal, onContinue }: ResolutionScreenProps) {
+export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }: ResolutionScreenProps) {
   const { event, before, after, explanations, dose } = result;
+  const isMars = site === 'mars';
+  const dayWord = isMars ? 'sol' : 'day';
   return (
     <section className="resolution">
-      <ScreenHeading>Day {result.day} report</ScreenHeading>
+      <ScreenHeading>
+        {isMars ? 'Sol' : 'Day'} {result.day} report
+      </ScreenHeading>
 
-      <p className="res-recap">
-        <span className="res-recap-kind">{KIND_WORDS[event.kind]}</span>
-        <span aria-hidden="true"> · </span>
-        <span>{formatRealDate(event.realDate)}</span>
-        <span aria-hidden="true"> · </span>
-        <span>Strength: {SEVERITY_WORDS[event.severity]}</span>
-      </p>
+      {isMars ? (
+        <>
+          <p className="res-reveal">
+            <InfoIcon className="res-reveal-icon" />
+            <span>
+              Message from Earth arrived: {kindWordFor(event.kind, 'sol')} on {formatRealDate(event.realDate)}
+            </span>
+          </p>
+          <EventCard
+            event={event}
+            day={result.day}
+            dayWord="sol"
+            kidText={isStubEvent(event) ? undefined : kidTextFor(event)}
+          />
+          {event.severity >= 1 && (
+            <p className="res-late">The warning came too late to plan for it. That's life far from Earth!</p>
+          )}
+        </>
+      ) : (
+        <p className="res-recap">
+          <span className="res-recap-kind">{kindWordFor(event.kind)}</span>
+          <span aria-hidden="true"> · </span>
+          <span>{formatRealDate(event.realDate)}</span>
+          <span aria-hidden="true"> · </span>
+          <span>Strength: {SEVERITY_WORDS[event.severity]}</span>
+        </p>
+      )}
 
       <div className="card res-card">
         <h2 className="visually-hidden">What changed</h2>
@@ -127,7 +155,7 @@ export function ResolutionScreen({ result, isFinal, onContinue }: ResolutionScre
       </div>
 
       <button type="button" className="btn btn-primary btn-large res-continue" onClick={onContinue}>
-        {isFinal ? 'See how the mission went' : 'Next day'}
+        {isFinal ? 'See how the mission went' : `Next ${dayWord}`}
       </button>
     </section>
   );
