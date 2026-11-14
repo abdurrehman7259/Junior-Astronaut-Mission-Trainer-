@@ -7,6 +7,11 @@ import { fetchJson, redactApiKey } from './lib/http';
 import { averageDailyDoseRate, INSTRUMENT_ID, parseDailyDoseReadings, PERIOD, radlabUrl } from './lib/radlab';
 
 const OUTPUT = fileURLToPath(new URL('../public/data/radlab-dose.json', import.meta.url));
+const RADLAB_HOME = 'https://visualization.osdr.nasa.gov/radlab/';
+
+function note(retrievedAt: string): string {
+  return `Archived (retrieved ${retrievedAt.slice(0, 10)}): preliminary ${INSTRUMENT_ID} data in Columbus; daily means of µGy/hour rates for 2024-01-18–2024-01-24, ×24. The ISS is inside Earth's magnetic field; the Moon's surface is not.`;
+}
 
 export async function fetchDoseCalibration(): Promise<DoseCalibration> {
   const sourceUrl = radlabUrl();
@@ -20,13 +25,19 @@ export async function fetchDoseCalibration(): Promise<DoseCalibration> {
   return DoseCalibrationSchema.parse({
     issDoseRateMicroGyPerDay: Math.round(rate), retrievedAt,
     source: 'NASA RadLab (OSDR), preliminary NASA/LBNL ISS radiation dosimetry',
-    sourceUrl,
-    note: `Archived (retrieved ${retrievedAt.slice(0, 10)}): ${INSTRUMENT_ID} in Columbus, mean of daily absorbed-dose rates for 2024-01-18–2024-01-24 UTC (preliminary data). The ISS is inside Earth's protective magnetic field; the Moon's surface lacks that protection, so lunar radiation exposure is higher.`,
+    sourceUrl: RADLAB_HOME,
+    note: note(retrievedAt),
   });
 }
 
 export async function main(): Promise<void> {
   try { process.loadEnvFile('.env'); } catch { /* Public API requires no credentials. */ }
+  if (process.argv.includes('--offline-note-only')) {
+    const existing = DoseCalibrationSchema.parse(JSON.parse(await (await import('node:fs/promises')).readFile(OUTPUT, 'utf8')));
+    const updated = DoseCalibrationSchema.parse({ ...existing, sourceUrl: RADLAB_HOME, note: note(existing.retrievedAt) });
+    await writeFile(OUTPUT, `${JSON.stringify(updated, null, 2)}\n`, 'utf8');
+    return;
+  }
   const snapshot = await fetchDoseCalibration();
   // Validate before touching the existing snapshot; replace it atomically.
   const json = `${JSON.stringify(DoseCalibrationSchema.parse(snapshot), null, 2)}\n`;

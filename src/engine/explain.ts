@@ -46,8 +46,8 @@ export function explainTurn(input: ExplanationInput): TurnExplanations {
       : brownout
         ? `Battery empty! Air drops ${finalDay ? now : next}.`
         : allocation.shield + allocation.science === 0
-          ? event.kind === 'CME' ? 'The CME slowed battery recharge.' : `The battery recharged ${now}.`
-          : `${event.kind === 'CME' ? 'The CME slowed recharge.' : 'Battery recharged.'} ${equipment} used reserve power.`,
+          ? event.kind === 'CME' ? 'In our game, the CME slowed recharge.' : `The battery recharged ${now}.`
+          : `${event.kind === 'CME' ? 'In our game, the CME slowed recharge.' : 'Battery recharged.'} ${equipment} used reserve power.`,
     lifeSupport: finalDay && (airShortfall > 0 || brownout)
       ? airShortfall > 0
         ? brownout ? `Too little power for air and an empty battery reduced air ${now}.`

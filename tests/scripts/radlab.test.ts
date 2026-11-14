@@ -67,7 +67,8 @@ describe('RadLab daily calibration', () => {
     expect(snapshot.retrievedAt).toBe('2026-11-14T12:00:00.000Z');
     expect(snapshot.note).toContain('Archived (retrieved 2026-11-14)');
     expect(snapshot.note).toContain('2024-01-18–2024-01-24');
-    expect(snapshot.sourceUrl).toBe(radlabUrl());
+    // sourceUrl is the RadLab home page (fact-check); the exact API query stays in the script.
+    expect(snapshot.sourceUrl).toBe('https://visualization.osdr.nasa.gov/radlab/');
     expect(fetchMock).toHaveBeenCalledWith(radlabUrl(), expect.objectContaining({ signal: expect.any(AbortSignal) }));
   });
   it('fails loudly when upstream returns an incomplete period', async () => {

@@ -1,7 +1,7 @@
 {
   "issDoseRateMicroGyPerDay": 631,
   "retrievedAt": "2026-11-14T08:25:58.886Z",
-  "note": "Archived (retrieved 2026-11-14): REM-COL1A2-pre in Columbus, mean of daily absorbed-dose rates for 2024-01-18–2024-01-24 UTC (preliminary data). The ISS is inside Earth's protective magnetic field; the Moon's surface lacks that protection, so lunar radiation exposure is higher.",
+  "note": "Archived (retrieved 2026-11-14): preliminary REM-COL1A2-pre data in Columbus; daily means of µGy/hour rates for 2024-01-18–2024-01-24, ×24. The ISS is inside Earth's magnetic field; the Moon's surface is not.",
   "source": "NASA RadLab (OSDR), preliminary NASA/LBNL ISS radiation dosimetry",
-  "sourceUrl": "https://visualization.osdr.nasa.gov/radlab/api/?spacecraft=ISS&instrument_id=REM-COL1A2-pre&timestamp%3E=2024-01-18&timestamp%3C=2024-01-25&absorbed_dose_rate=&format=json"
+  "sourceUrl": "https://visualization.osdr.nasa.gov/radlab/"
 }
