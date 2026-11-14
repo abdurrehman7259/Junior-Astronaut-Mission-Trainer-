@@ -1,0 +1,50 @@
+{
+  "retrievedAt": "2026-11-14T08:51:28.008Z",
+  "source": "NASA Open Science Data Repository (OSDR)",
+  "sourceUrl": "https://osdr.nasa.gov/bio/",
+  "notes": "Archived (retrieved 2026-11-14). Searched bone, muscle and radiation using the public OSDR Search API (cgene), including all result pages. Selected two description-evidence-reviewed drafts per topic, preferring explicit flight context and clear topic titles, then numeric accession; sorted by numeric accession. Radiation studies include ground-based exposures and simulated deep space radiation, not astronaut flight measurements. Every study page returned HTTP 200. Drafts describe study questions, not inferred results. API documentation: https://api.nasa.gov/",
+  "items": [
+    {
+      "id": "OSD-21",
+      "text": "Scientists compared muscle gene activity in mice that flew on a space shuttle with mice that stayed on Earth.",
+      "studyTitle": "Effects of spaceflight on murine skeletal muscle gene expression",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-21",
+      "topic": "muscle"
+    },
+    {
+      "id": "OSD-326",
+      "text": "Scientists compared genes and chemicals in thigh muscles from mice in space and mice on Earth.",
+      "studyTitle": "Gene-metabolite network linked to inhibited bioenergetics in association with spaceflight induced loss of quadriceps muscle",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-326",
+      "topic": "muscle"
+    },
+    {
+      "id": "OSD-342",
+      "text": "Scientists tested ways to protect muscle and bone in mice sent to the International Space Station.",
+      "studyTitle": "Targeting myostatin/activin A protects against skeletal muscle and bone loss during spaceflight [plasma proteomics]",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-342",
+      "topic": "bone"
+    },
+    {
+      "id": "OSD-360",
+      "text": "Scientists studied how radiation exposure affected chemical processes in the spleens of mice.",
+      "studyTitle": "Effects of low dose space radiation exposures on the splenic metabolome",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-360",
+      "topic": "radiation"
+    },
+    {
+      "id": "OSD-366",
+      "text": "Scientists studied how different types of mice respond to simulated deep space radiation.",
+      "studyTitle": "Coalescence of DNA double strand breaks induced by galactic cosmic radiation is modulated by genetics in 15 inbred strains of mice",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-366",
+      "topic": "radiation"
+    },
+    {
+      "id": "OSD-396",
+      "text": "Scientists studied how spaceflight affects the healing of broken bones.",
+      "studyTitle": "Gene-metabolite networks associated with impediment of bone fracture repair in spaceflight",
+      "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-396",
+      "topic": "bone"
+    }
+  ]
+}
