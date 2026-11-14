@@ -8,6 +8,14 @@ import type { EngineRules } from './rules';
 
 const clampMeter = (value: number) => Math.max(METER_MIN, Math.min(METER_MAX, Math.round(value)));
 
+// These contract records contain only primitives and the nested records copied here.
+// Explicit copies avoid repeatedly serializing a whole mission during simulation.
+function copyTurn(turn: TurnResult): TurnResult {
+  return { ...turn, allocation: { ...turn.allocation }, event: { ...turn.event },
+    before: { ...turn.before }, after: { ...turn.after }, deltas: { ...turn.deltas },
+    dose: { ...turn.dose }, explanations: { ...turn.explanations } };
+}
+
 export function resolveTurn(state: GameState, allocation: Allocation, rules: EngineRules): {
   state: GameState; result: TurnResult;
 } {
@@ -79,8 +87,9 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
   const next: GameState = {
     ...state, day: statusAfter === 'playing' ? state.day + 1 : state.day,
     meters: { ...after }, scienceScore: result.scienceAfter,
-    history: [...state.history, result], carryOver, status: statusAfter,
+    history: [...state.history, result].map(copyTurn), carryOver,
+    events: state.events.map(item => ({ ...item })), status: statusAfter,
   };
   // Detach nested history/events as well: consumers can edit the returned state safely.
-  return { state: structuredClone(next), result };
+  return { state: next, result };
 }

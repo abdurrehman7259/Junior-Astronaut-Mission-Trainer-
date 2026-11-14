@@ -18,14 +18,6 @@ export const RULES = {
   powerCostPerShieldUnit: 2, // Extra reserve consumed by each shield unit.
   powerCostPerScienceUnit: 3, // Extra reserve consumed by each science unit.
   brownoutLifeSupportDrain: 15, // Air loss on empty reserve; immediate on the final day.
-  strategy: {
-    lifeUnits: 4, // Simulator adaptive policy: daily life allocation.
-    shieldPerSeverity: 2, // Simulator adaptive policy: shield units per severity step.
-    lowLifeSupport: 40, // Adaptive-plus starts air recovery below this meter.
-    recoveryLifeUnits: 6, // Adaptive-plus life allocation during recovery.
-    lowCrewHealth: 40, // Adaptive-plus adds protection below this meter.
-    extraShield: 1, // Adaptive-plus extra shield units when crew health is low.
-  },
   draw: {
     minStorms: 3, // Fewest storm events in a mission.
     maxStorms: 5, // Most storm events in a mission.

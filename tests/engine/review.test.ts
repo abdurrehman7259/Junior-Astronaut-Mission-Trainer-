@@ -53,30 +53,79 @@ describe('B2 review regressions', () => {
   });
 
   it('keeps all 66 allocations across severities, meters and final days grammatical and schema-valid', () => {
-    for (const severity of [0, 1, 2, 3] as const) {
-      for (const meters of [
-        { power: 100, lifeSupport: 100, crewHealth: 100 },
-        { power: 0, lifeSupport: 20, crewHealth: 20 },
-        { power: 1, lifeSupport: 1, crewHealth: 1 },
-        { power: 65, lifeSupport: 80, crewHealth: 90 },
-      ]) {
-        for (const day of [1, MISSION_DAYS]) {
-          const state = createGame(1, daysOf(severity === 0 ? 'QUIET' : 'FLR', severity));
-          state.meters = meters;
-          state.day = day;
-          for (const allocation of allocations) {
-            const { explanations } = previewTurn(state, allocation);
-            TurnExplanationsSchema.parse(explanations);
-            expect(explanations.lifeSupport).not.toContain('Only 0');
-            if (meters.lifeSupport === 100) expect(explanations.lifeSupport).not.toContain('helped restore');
-            if (allocation.science + allocation.shield === 0) expect(explanations.power).not.toContain('used reserve');
+    // Include no-recharge states: funded fractions must exercise both 0 and 1 point.
+    const gains = new Set<number>();
+    for (const engine of [withRules(RULES), withRules({ ...RULES, powerRechargePerDay: 0 })]) {
+      for (const severity of [0, 1, 2, 3] as const) {
+        for (const meters of [
+          { power: 100, lifeSupport: 100, crewHealth: 100 },
+          { power: 0, lifeSupport: 20, crewHealth: 20 },
+          { power: 1, lifeSupport: 1, crewHealth: 1 },
+          { power: 65, lifeSupport: 80, crewHealth: 90 },
+        ]) {
+          for (const day of [1, MISSION_DAYS]) {
+            const state = createGame(1, daysOf(severity === 0 ? 'QUIET' : 'FLR', severity));
+            state.meters = meters;
+            state.day = day;
+            for (const allocation of allocations) {
+              const { explanations, scienceGained } = engine.previewTurn(state, allocation);
+              if (explanations.science.startsWith('Battery empty!')) gains.add(scienceGained);
+              TurnExplanationsSchema.parse(explanations);
+              expect(explanations.science).not.toMatch(/\b1 science points\b/);
+              expect(explanations.science).not.toMatch(/\b(?:0|[2-9]|\d{2,}) science point\b/);
+              if (severity === 0) expect(explanations.power).not.toContain('shield was weaker');
+              if (severity > 0 && allocation.shield === 0) {
+                expect(explanations.crewHealth).toBe(`No shield! All ${RULES.dosePerSeverity[severity]} game dose reached the crew.`);
+              }
+              expect(explanations.lifeSupport).not.toContain('Only 0');
+              if (meters.lifeSupport === 100) expect(explanations.lifeSupport).not.toContain('helped restore');
+              if (allocation.science + allocation.shield === 0) expect(explanations.power).not.toContain('used reserve');
+            }
           }
         }
       }
     }
+    expect(gains.has(0)).toBe(true);
+    expect(gains.has(1)).toBe(true);
     const state = createGame(1, daysOf('QUIET'));
     expect(previewTurn(state, { life: 9, shield: 0, science: 1 }).explanations.science).toContain('1 science unit earned');
     expect(previewTurn(state, { life: 8, shield: 0, science: 2 }).explanations.science).toContain('2 science units earned');
     expect(previewTurn(state, { life: 0, shield: 0, science: 10 }).explanations.lifeSupport).toContain('No power for air!');
+  });
+
+  it('warns about queued brownouts in the air line, including underfunding and exact zero', () => {
+    for (const allocation of [balanced, { life: 4, shield: 0, science: 6 }]) {
+      const cost = allocation.shield * RULES.powerCostPerShieldUnit
+        + allocation.science * RULES.powerCostPerScienceUnit;
+      for (const power of [0, cost - RULES.powerRechargePerDay]) {
+        const state = createGame(1, daysOf('QUIET'));
+        state.meters.power = power;
+        // Today's due loss must not hide tomorrow's newly queued brownout.
+        state.carryOver = [{ id: 'earlier', dueDay: 1, meter: 'lifeSupport', delta: -15, reason: 'Earlier shortage.' }];
+        const turn = applyTurn(state, allocation);
+        expect(turn.state.carryOver.some(effect => effect.id === 'brownout-1')).toBe(true);
+        expect(turn.result.explanations.lifeSupport).toBe('Battery empty! Air will drop tomorrow.');
+        expect(previewTurn(state, allocation)).toEqual(turn.result);
+      }
+    }
+  });
+
+  it('prioritizes an air shortfall before day 10 and mentions both final-day losses', () => {
+    for (const life of [0, 1, 3, 4]) {
+      const state = createGame(1, daysOf('QUIET'));
+      state.meters.power = 0;
+      const allocation = { life, shield: 0, science: 10 - life };
+      const early = applyTurn(state, allocation);
+      expect(early.result.explanations.lifeSupport).toContain('tomorrow');
+      if (life < 4) expect(early.result.explanations.lifeSupport).toContain('for air');
+      state.day = MISSION_DAYS;
+      const final = applyTurn(state, allocation);
+      expect(final.result.explanations.lifeSupport).toBe(life < 4
+        ? 'Too little power for air and an empty battery reduced air today.'
+        : 'An empty battery reduced air today.');
+      expect(final.state.carryOver).toEqual([]);
+      expect(final.state.meters.lifeSupport).toBe(state.meters.lifeSupport
+        - (4 - life) * RULES.lifeSupportDrainPerMissingUnit - RULES.brownoutLifeSupportDrain);
+    }
   });
 });

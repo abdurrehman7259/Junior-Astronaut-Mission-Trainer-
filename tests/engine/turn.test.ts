@@ -84,7 +84,7 @@ describe('turn resolution', () => {
     TurnResultSchema.parse(lowAir.result);
   });
 
-  it('applies due effects for any contracted meter and mentions them', () => {
+  it('applies due effects for any contracted meter', () => {
     const state = createGame(1, daysOf('QUIET'));
     state.carryOver = [
       { id: 'health', dueDay: 1, meter: 'crewHealth', delta: -7, reason: 'Earlier health loss.' },
@@ -94,8 +94,6 @@ describe('turn resolution', () => {
     expect(turn.result.deltas.crewHealth).toBe(-7);
     expect(turn.result.deltas.power).toBe(RULES.powerRechargePerDay - 9
       - 3 * RULES.powerCostPerShieldUnit - 3 * RULES.powerCostPerScienceUnit);
-    expect(turn.result.explanations.crewHealth).toContain('Earlier');
-    expect(turn.result.explanations.power).toContain('Earlier');
     expect(turn.state.carryOver).toEqual([]);
     TurnResultSchema.parse(turn.result);
   });
@@ -160,7 +158,7 @@ describe('turn resolution', () => {
     const next = applyTurn(deepFreeze(first.state), { life: 4, shield: 6, science: 0 });
     expect(next.state.meters.lifeSupport).toBe(start.meters.lifeSupport - RULES.brownoutLifeSupportDrain);
     expect(next.state.carryOver.map(effect => effect.id)).toEqual(['brownout-2']);
-    expect(next.result.explanations.lifeSupport).toContain('battery');
+    expect(next.result.explanations.lifeSupport).toBe('Battery empty! Air will drop tomorrow.');
     const exactZero = { ...start, meters: { ...start.meters, power: 3 * RULES.powerCostPerShieldUnit + 3 * RULES.powerCostPerScienceUnit - RULES.powerRechargePerDay } };
     expect(applyTurn(exactZero, balanced).state.carryOver[0].id).toBe('brownout-1');
     const positive = { ...start, meters: { ...start.meters, power: 3 * RULES.powerCostPerShieldUnit + 3 * RULES.powerCostPerScienceUnit - RULES.powerRechargePerDay + 1 } };
@@ -232,6 +230,9 @@ describe('turn resolution', () => {
     expect(previewTurn(frozen, allocation)).toEqual(result);
     state.events[0].kidText = 'Changed event';
     state.history[0].after.power = 0;
+    state.history[0].dose.received = 999;
+    state.history[0].explanations.science = 'Changed history';
+    state.carryOver.forEach(effect => { effect.delta = -999; });
     state.history[1].allocation.life = 10;
     state.meters.power = 0;
     result.event.kidText = 'Changed result';

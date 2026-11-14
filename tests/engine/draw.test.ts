@@ -7,16 +7,32 @@ import { EVENTS } from './fixtures/events';
 import { deepFreeze } from './helpers';
 
 describe('event drawing', () => {
-  it('keeps each day within six percentage points of the mean storm rate', () => {
+  it('matches exact uniform-layout marginal storm rates within three percentage points', () => {
+    // Independent exhaustive bit-mask enumeration: first choose 3, 4 or 5 storms
+    // equally, then choose uniformly among valid layouts for that count.
+    const expected = Array<number>(MISSION_DAYS).fill(0);
+    for (let storms = RULES.draw.minStorms; storms <= RULES.draw.maxStorms; storms++) {
+      const layouts: boolean[][] = [];
+      for (let mask = 0; mask < 2 ** MISSION_DAYS; mask++) {
+        const days = Array.from({ length: MISSION_DAYS }, (_, day) => Boolean(mask & (1 << day)));
+        if (days.filter(Boolean).length !== storms) continue;
+        if (days.some((_, day) => days.slice(day, day + RULES.draw.maxConsecutiveStorms + 1)
+          .filter(Boolean).length > RULES.draw.maxConsecutiveStorms)) continue;
+        layouts.push(days);
+      }
+      for (let day = 0; day < MISSION_DAYS; day++) {
+        expected[day] += layouts.filter(layout => layout[day]).length / layouts.length
+          / (RULES.draw.maxStorms - RULES.draw.minStorms + 1);
+      }
+    }
     const counts = Array<number>(MISSION_DAYS).fill(0);
-    const draws = 2000;
+    const draws = 10000;
     for (let seed = 0; seed < draws; seed++) {
       drawEventSet(EVENTS, seed, []).forEach((event, day) => {
         if (event.kind !== 'QUIET') counts[day]++;
       });
     }
-    const mean = counts.reduce((sum, count) => sum + count, 0) / MISSION_DAYS / draws;
-    for (const count of counts) expect(Math.abs(count / draws - mean)).toBeLessThanOrEqual(0.06);
+    counts.forEach((count, day) => expect(Math.abs(count / draws - expected[day])).toBeLessThanOrEqual(0.03));
   });
   it('has a schema-valid synthetic fixture covering all requested event kinds and severities', () => {
     EVENTS.forEach(event => SolarEventSchema.parse(event));
