@@ -23,6 +23,19 @@ describe('StartScreen', () => {
     expect(screen.getByText('Stays on this device only.')).toBeInTheDocument();
   });
 
+  it('offers Continue mission and a New mission button when a save exists', async () => {
+    const user = userEvent.setup();
+    const onResume = vi.fn();
+    const onStart = vi.fn();
+    render(<StartScreen onStart={onStart} resume={{ day: 4, crewName: 'Nova', onResume }} />);
+    expect(screen.queryByRole('button', { name: 'Start mission' })).not.toBeInTheDocument();
+    expect(screen.getByText('Crew Nova is waiting at the base.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue mission (Day 4)' }));
+    expect(onResume).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'New mission' }));
+    expect(onStart).toHaveBeenCalledWith('Cadets');
+  });
+
   it('keeps 12 characters of a 20-character name and shows the count', async () => {
     const user = userEvent.setup();
     render(<StartScreen onStart={() => {}} />);

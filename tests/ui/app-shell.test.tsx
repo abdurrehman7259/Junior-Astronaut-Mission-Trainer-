@@ -1,10 +1,29 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { App } from '../../src/app/App';
 import { engine } from '../../src/app/engine';
 import { initialState, reducer, type AppState } from '../../src/app/state';
+import { SAVE_KEY } from '../../src/app/save';
 import { STUB_EVENTS } from '../../src/app/stub-events';
+import type { SolarEvent } from '../../src/shared/types';
+
+beforeEach(() => localStorage.clear());
+
+const REAL_EVENTS: SolarEvent[] = STUB_EVENTS.map((e) => ({
+  ...e,
+  id: e.id.replace('STUB-', 'TEST-'),
+  sourceUrl: 'https://example.com/donki',
+}));
+const loadReal = () =>
+  Promise.resolve({ events: REAL_EVENTS, retrievedAt: '2026-01-01T00:00:00Z', isPlaceholder: false });
+
+async function playDays(user: ReturnType<typeof userEvent.setup>, n: number) {
+  for (let i = 0; i < n; i++) {
+    await user.click(await screen.findByRole('button', { name: /^Run day \d+$/ }));
+    await user.click(await screen.findByRole('button', { name: /Next day|See how the mission went/ }));
+  }
+}
 
 const load = () => Promise.resolve({ events: STUB_EVENTS, retrievedAt: null, isPlaceholder: true });
 
@@ -67,6 +86,55 @@ describe('app shell', () => {
   });
 });
 
+describe('save and resume', () => {
+  it('resumes at Day 3 with the same meters after a remount', async () => {
+    const user = userEvent.setup();
+    const first = render(<App loadEventsFn={load} />);
+    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    await playDays(user, 2);
+    const meters = screen.getAllByRole('meter').map((m) => m.getAttribute('aria-valuenow'));
+    first.unmount();
+
+    render(<App loadEventsFn={load} />);
+    expect(await screen.findByRole('button', { name: 'Continue mission (Day 3)' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'New mission' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue mission (Day 3)' }));
+    expect(screen.getAllByText('Day 3 of 10').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('meter').map((m) => m.getAttribute('aria-valuenow'))).toEqual(meters);
+  }, 20_000);
+
+  it('discards a placeholder save when real data loads', async () => {
+    const user = userEvent.setup();
+    const first = render(<App loadEventsFn={load} />);
+    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
+    first.unmount();
+
+    render(<App loadEventsFn={loadReal} />);
+    expect(await screen.findByRole('button', { name: 'Start mission' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue mission/ })).not.toBeInTheDocument();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('discards a real-data save when placeholder data loads', async () => {
+    const user = userEvent.setup();
+    const first = render(<App loadEventsFn={loadReal} />);
+    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    first.unmount();
+    render(<App loadEventsFn={load} />);
+    expect(await screen.findByRole('button', { name: 'Start mission' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Continue mission/ })).not.toBeInTheDocument();
+  });
+
+  it('clears the save when the mission ends', async () => {
+    const user = await setup();
+    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
+    await playToEnd(user);
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  }, 20_000);
+});
+
 describe('reducer', () => {
   const loaded: AppState = reducer(initialState, {
     type: 'loaded',
@@ -103,6 +171,27 @@ describe('reducer', () => {
     for (let seed = 2; seed < 8; seed++) s = reducer(s, { type: 'playAgain', seed });
     expect(s.recentSetIds.length).toBeLessThanOrEqual(3);
     expect(engine).toBeDefined();
+  });
+
+  it('resume is pure and restores the saved state', () => {
+    const started = reducer(loaded, { type: 'startMission', seed: 5, crewName: 'Nova' });
+    const saved = {
+      version: 1 as const,
+      savedAt: '2026-01-01T00:00:00.000Z',
+      crewName: 'Nova',
+      screen: 'mission' as const,
+      game: started.game!,
+      lastResult: null,
+      allocation: { life: 5, shield: 3, science: 2 },
+      recentSetIds: started.recentSetIds,
+      placeholder: true,
+    };
+    const frozen = structuredClone(saved);
+    const a = reducer(loaded, { type: 'resume', saved });
+    expect(reducer(loaded, { type: 'resume', saved })).toEqual(a);
+    expect(saved).toEqual(frozen);
+    expect(a).toMatchObject({ screen: 'mission', crewName: 'Nova', allocation: saved.allocation });
+    expect(a.game).toEqual(saved.game);
   });
 
   it('toggles the data panel and handles load failure', () => {

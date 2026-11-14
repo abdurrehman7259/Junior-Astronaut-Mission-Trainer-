@@ -1,6 +1,7 @@
 import { eventSetIdOf, isValidAllocation } from '../shared/eventSet';
 import type { Allocation, GameState, SolarEvent, TurnResult } from '../shared/types';
 import { engine } from './engine';
+import type { SavedGame } from './save';
 
 /**
  * Screen flow for one mission day: 'mission' (event card + meters + allocator)
@@ -29,6 +30,7 @@ export interface AppState {
 export type Action =
   | { type: 'loaded'; events: SolarEvent[]; retrievedAt: string | null; isPlaceholder: boolean }
   | { type: 'loadFailed' }
+  | { type: 'resume'; saved: SavedGame }
   | { type: 'startMission'; seed: number; crewName?: string }
   | { type: 'setAllocation'; allocation: Allocation }
   | { type: 'playDay'; allocation: Allocation }
@@ -83,6 +85,16 @@ export function reducer(state: AppState, action: Action): AppState {
       };
     case 'loadFailed':
       return { ...state, screen: 'error' };
+    case 'resume':
+      return {
+        ...state,
+        screen: action.saved.screen,
+        crewName: action.saved.crewName,
+        game: action.saved.game,
+        lastResult: action.saved.lastResult,
+        allocation: { ...action.saved.allocation },
+        recentSetIds: [...action.saved.recentSetIds],
+      };
     case 'startMission':
       return begin({ ...state, crewName: action.crewName?.trim() || DEFAULT_CREW }, action.seed);
     case 'playAgain':

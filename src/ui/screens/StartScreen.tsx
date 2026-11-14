@@ -21,7 +21,13 @@ function MoonBaseArt() {
   );
 }
 
-export function StartScreen({ onStart }: { onStart: (crewName: string) => void }) {
+export interface StartResume {
+  day: number;
+  crewName: string;
+  onResume: () => void;
+}
+
+export function StartScreen({ onStart, resume }: { onStart: (crewName: string) => void; resume?: StartResume }) {
   const [name, setName] = useState(() => loadCrewName());
 
   const start = (event?: FormEvent) => {
@@ -39,6 +45,15 @@ export function StartScreen({ onStart }: { onStart: (crewName: string) => void }
         <p>Your crew lives at a base near the Moon&apos;s south pole.</p>
         <p>Each day, share 10 power units between Life support, Shielding and Science.</p>
         <p>Real solar storms from NASA records will hit. Be ready!</p>
+
+        {resume && (
+          <div className="start-resume stack">
+            <button type="button" className="btn btn-primary btn-large start-button" onClick={resume.onResume}>
+              Continue mission (Day {resume.day})
+            </button>
+            <p>Crew {resume.crewName} is waiting at the base.</p>
+          </div>
+        )}
 
         <form className="start-form" onSubmit={start}>
           <label htmlFor="crew-name" className="start-label">
@@ -60,8 +75,8 @@ export function StartScreen({ onStart }: { onStart: (crewName: string) => void }
               {name.length}/{CREW_NAME_MAX}
             </span>
           </p>
-          <button type="submit" className="btn btn-primary btn-large start-button">
-            Start mission
+          <button type="submit" className={`btn btn-large start-button ${resume ? 'btn-secondary' : 'btn-primary'}`}>
+            {resume ? 'New mission' : 'Start mission'}
           </button>
         </form>
       </div>
