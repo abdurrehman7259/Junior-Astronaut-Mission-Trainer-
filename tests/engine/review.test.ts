@@ -43,8 +43,8 @@ describe('B2 review regressions', () => {
     expect(unfunded.dose.blocked).toBeLessThan(funded.dose.blocked);
     expect(unfunded.scienceGained).toBeLessThan(funded.scienceGained);
     expect(unfunded.after.crewHealth).toBeLessThan(funded.after.crewHealth);
-    expect(unfunded.explanations.power).toBe('Battery empty! Your shield was weaker.');
-    expect(unfunded.explanations.science).toContain('worked less');
+    expect(unfunded.explanations.power).toBe('The battery ran out, so your shield was weaker.');
+    expect(unfunded.explanations.science).toContain('Low power meant less science');
     const noRecharge = withRules({ ...RULES, powerRechargePerDay: 0 });
     const stopped = noRecharge.previewTurn(empty, balanced);
     expect(stopped.dose.blocked).toBe(0);
@@ -59,7 +59,10 @@ describe('B2 review regressions', () => {
     for (const site of SITE_IDS) {
       const rules = RULES_BY_SITE[site];
       for (const engine of [withRules(rules), withRules({ ...rules, powerRechargePerDay: 0 })]) {
-        for (const severity of [0, 1, 2, 3] as const) {
+        for (const [kind, severity] of [
+          ['QUIET', 0], ['FLR', 1], ['FLR', 2], ['FLR', 3],
+          ['CME', 1], ['CME', 2], ['CME', 3],
+        ] as const) {
           for (const meters of [
             { power: 100, lifeSupport: 100, crewHealth: 100 },
             { power: 0, lifeSupport: 20, crewHealth: 20 },
@@ -67,7 +70,7 @@ describe('B2 review regressions', () => {
             { power: 65, lifeSupport: 80, crewHealth: 90 },
           ]) {
             for (const day of [1, MISSION_DAYS]) {
-              const state = engine.createGame(1, daysOf(severity === 0 ? 'QUIET' : 'FLR', severity), site);
+              const state = engine.createGame(1, daysOf(kind, severity), site);
               state.meters = meters;
               state.day = day;
               if (meters.power === 1) state.carryOver = [{ id: 'earlier', dueDay: day,
@@ -75,10 +78,13 @@ describe('B2 review regressions', () => {
               for (const allocation of allocations) {
                 const turn = engine.applyTurn(state, allocation);
                 const { explanations, scienceGained } = turn.result;
-                if (explanations.science.startsWith('Battery empty!')) gains.add(scienceGained);
+                if (explanations.science.startsWith('Low power')) gains.add(scienceGained);
                 TurnExplanationsSchema.parse(explanations);
+                expect(Object.values(explanations).join(' ').match(/Battery empty!/g)?.length ?? 0)
+                  .toBeLessThanOrEqual(1);
                 for (const line of [...Object.values(explanations), ...turn.state.carryOver.map(effect => effect.reason)]) {
                   expect(line.trim().split(/\s+/).length).toBeLessThanOrEqual(15);
+                  expect(line).not.toMatch(/\b(hurt|hit)\b/i);
                   if (site === 'mars') expect(line).not.toMatch(/day|tomorrow/i);
                 }
                 if (site === 'mars') expect(explanations.science).toContain('this sol');
@@ -86,7 +92,7 @@ describe('B2 review regressions', () => {
                 expect(explanations.science).not.toMatch(/\b(?:0|[2-9]|\d{2,}) science point\b/);
                 if (severity === 0) expect(explanations.power).not.toContain('shield was weaker');
                 if (severity > 0 && allocation.shield === 0) {
-                  expect(explanations.crewHealth).toBe(`No shield! All ${RULES.dosePerSeverity[severity]} game dose reached the crew.`);
+                  expect(explanations.crewHealth).toBe(`Shield was off, so all ${RULES.dosePerSeverity[severity]} game dose reached the crew.`);
                 }
                 expect(explanations.lifeSupport).not.toContain('Only 0');
                 if (meters.lifeSupport === 100) expect(explanations.lifeSupport).not.toContain('helped restore');
@@ -103,7 +109,7 @@ describe('B2 review regressions', () => {
     expect(previewTurn(state, { life: 9, shield: 0, science: 1 }).explanations.science).toContain('1 science unit earned');
     expect(previewTurn(state, { life: 8, shield: 0, science: 2 }).explanations.science).toContain('2 science units earned');
     expect(previewTurn(state, { life: 0, shield: 0, science: 10 }).explanations.lifeSupport).toContain('No power for air!');
-  });
+  }, 20000);
 
   it('warns about queued brownouts in the air line, including underfunding and exact zero', () => {
     for (const allocation of [balanced, { life: 4, shield: 0, science: 6 }]) {
@@ -116,7 +122,7 @@ describe('B2 review regressions', () => {
         state.carryOver = [{ id: 'earlier', dueDay: 1, meter: 'lifeSupport', delta: -15, reason: 'Earlier shortage.' }];
         const turn = applyTurn(state, allocation);
         expect(turn.state.carryOver.some(effect => effect.id === 'brownout-1')).toBe(true);
-        expect(turn.result.explanations.lifeSupport).toBe('Battery empty! Air will drop tomorrow.');
+        expect(turn.result.explanations.lifeSupport).toBe('Air will drop tomorrow because the battery ran out.');
         expect(previewTurn(state, allocation)).toEqual(turn.result);
       }
     }
@@ -129,7 +135,7 @@ describe('B2 review regressions', () => {
       const allocation = { life, shield: 0, science: 10 - life };
       const early = applyTurn(state, allocation);
       expect(early.result.explanations.lifeSupport).toContain('tomorrow');
-      if (life < 4) expect(early.result.explanations.lifeSupport).toContain('for air');
+      if (life < 4) expect(early.result.explanations.lifeSupport).toContain('air');
       state.day = MISSION_DAYS;
       const final = applyTurn(state, allocation);
       expect(final.result.explanations.lifeSupport).toBe(life < 4

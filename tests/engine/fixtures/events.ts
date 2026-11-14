@@ -15,3 +15,7 @@ export const EVENTS: SolarEvent[] = [
     kidText: 'Synthetic quiet day for engine tests only.', sourceUrl: 'https://example.invalid/fixture',
   })),
 ];
+
+// Synthetic Mars pool: storm tags exercise the production draw-site inference.
+export const MARS_EVENTS: SolarEvent[] = EVENTS.map(event => event.kind === 'QUIET'
+  ? { ...event } : { ...event, marsImpact: 'game-only' });

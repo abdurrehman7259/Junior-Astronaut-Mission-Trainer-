@@ -1,12 +1,61 @@
 import { describe, expect, it } from 'vitest';
-import { drawEventSet, RULES, withRules } from '../../src/engine';
+import { drawEventSet, RULES, RULES_BY_SITE, withRules } from '../../src/engine';
+import { loadPool, stormTransitions } from '../../scripts/simulate';
 import { eventSetIdOf } from '../../src/shared/eventSet';
 import { SolarEventSchema } from '../../src/shared/schemas';
 import { MISSION_DAYS } from '../../src/shared/types';
-import { EVENTS } from './fixtures/events';
+import { EVENTS, MARS_EVENTS } from './fixtures/events';
 import { deepFreeze } from './helpers';
 
 describe('event drawing', () => {
+  it('infers Mars only when every storm has marsImpact, ignoring quiet tags', () => {
+    const engine = withRules({ moon: RULES, mars: { ...RULES_BY_SITE.mars,
+      draw: { ...RULES_BY_SITE.mars.draw, minStorms: 5, maxStorms: 5 } } });
+    // Quiet records remain untagged in MARS_EVENTS; every storm must be tagged.
+    const mixed = MARS_EVENTS.map((event, i) => i === 0 ? EVENTS[i] : event);
+    const quietTagged = EVENTS.map(event => event.kind === 'QUIET'
+      ? { ...event, marsImpact: 'game-only' as const } : event);
+    const ids = (events: typeof EVENTS) => events.map(event => event.id);
+    for (let seed = 1; seed <= 100; seed++) {
+      expect(engine.drawEventSet(MARS_EVENTS, seed, []).filter(event => event.kind !== 'QUIET')).toHaveLength(5);
+      for (const pool of [EVENTS, mixed, quietTagged]) {
+        expect(ids(engine.drawEventSet(pool, seed, []))).toEqual(ids(drawEventSet(EVENTS, seed, [])));
+      }
+    }
+    expect(() => engine.drawEventSet([], 1, [])).toThrow(/3 unique/);
+    expect(() => engine.drawEventSet(quietTagged.filter(event => event.kind === 'QUIET'), 1, []))
+      .toThrow(/3 unique/);
+  });
+
+  it('keeps Mars storm-after-storm probability within five points of storm-after-quiet', () => {
+    const real = loadPool('mars');
+    expect(real.label).toContain('public/data/donki-mars-events.json');
+    expect(real.label).not.toContain('PROXY');
+    for (const pool of [real.events, MARS_EVENTS]) {
+      const rates = stormTransitions(pool);
+      expect(rates.afterStorm + rates.afterQuiet).toBe(5000 * (MISSION_DAYS - 1));
+      expect(rates.stormGivenStorm).toBeGreaterThanOrEqual(rates.stormGivenQuiet - 0.05);
+    }
+  });
+
+  it('allows three consecutive Mars storms while preserving the count and severity constraints', () => {
+    let longest = 0;
+    for (let seed = 1; seed <= 500; seed++) {
+      const drawn = drawEventSet(MARS_EVENTS, seed, []);
+      const storms = drawn.filter(event => event.kind !== 'QUIET');
+      expect(storms.length).toBeGreaterThanOrEqual(3);
+      expect(storms.length).toBeLessThanOrEqual(5);
+      expect(storms.some(event => event.severity >= 2)).toBe(true);
+      expect(new Set(drawn.map(event => event.id)).size).toBe(MISSION_DAYS);
+      let run = 0;
+      for (const event of drawn) {
+        run = event.kind === 'QUIET' ? 0 : run + 1;
+        longest = Math.max(longest, run);
+      }
+    }
+    expect(longest).toBe(3);
+  });
+
   it('matches exact uniform-layout marginal storm rates within three percentage points', () => {
     // Independent exhaustive bit-mask enumeration: first choose 3, 4 or 5 storms
     // equally, then choose uniformly among valid layouts for that count.

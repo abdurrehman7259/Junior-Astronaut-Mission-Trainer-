@@ -25,6 +25,7 @@ export const RULES = {
     maxStorms: 5, // Most storm events in a mission.
     requiredSeverity: 2, // At least one storm must reach this severity.
     maxConsecutiveStorms: 2, // Maximum adjacent storm days when arranging the mission.
+    consecutiveStormWeight: 1, // Layout weight multiplier per adjacent storm pair; 1 is uniform.
     maxAttempts: 128, // Bounded attempts to avoid previously played event set ids.
   },
 } as const;
@@ -42,6 +43,9 @@ export const RULES_BY_SITE: Record<SiteId, EngineRules> = {
     // NASA source: https://nssdc.gsfc.nasa.gov/planetary/factsheet/marsfact.html
     powerRechargePerDay: 4, // Game rule: less solar recharge per sol, not a measured ratio.
     powerRechargeOnCme: 3, // Game rule: slightly less recharge during CMEs.
+    shieldHalfProtectionUnits: 2.75, // GAME RULE: Mars's thin atmosphere adds a little shielding; no real ratio claimed.
+    // GAME RULE: mildly favor adjacent storms so yesterday's report is not a backwards cue.
+    draw: { ...RULES.draw, maxConsecutiveStorms: 3, consecutiveStormWeight: 1.5 },
     // Keep the same game doses. A thin atmosphere and no global magnetic field do not
     // justify inventing a real Moon/Mars dose ratio. NASA: https://science.nasa.gov/mars/facts/
     // The delayed forecast in SITES is the main gameplay difference.

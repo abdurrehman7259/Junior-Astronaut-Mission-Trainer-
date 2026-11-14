@@ -15,6 +15,9 @@ export const POLICY = {
   kidNormal: { life: 4, shield: 3, science: 3 },
   kidStorm: { life: 4, shield: 6, science: 0 },
   kidLifeUnits: 5,
+  kidLowMeter: 50,
+  kidRecoveryLifeUnits: 6,
+  kidRecoveryShieldUnits: 5,
 } as const;
 
 export type Strategy = (state: GameState) => Allocation;
@@ -60,12 +63,23 @@ export function strategies(site: SiteId = 'moon'): Record<string, Strategy> {
     'greedy-science (3/1/6)': fixed({ life: 3, shield: 1, science: 6 }),
     adaptive: state => adaptive(state, false),
     'adaptive-plus': state => adaptive(state, true),
-    'kid storm switch (4/3/3 or 4/6/0)': state => ({ ...(knownSeverity(state)
-      >= POLICY.kidStormSeverity ? POLICY.kidStorm : POLICY.kidNormal) }),
-    [`kid extra air (${policy.kidLifeUnits} / ${policy.baseShield} + floor(${policy.shieldPerSeverity} x warning) / rest)`]: state => {
-      const shield = Math.min(POWER_UNITS_PER_DAY - policy.kidLifeUnits,
-        policy.baseShield + Math.floor(policy.shieldPerSeverity * knownSeverity(state)));
-      return { life: policy.kidLifeUnits, shield, science: POWER_UNITS_PER_DAY - policy.kidLifeUnits - shield };
-    },
+    ...(site === 'mars' ? {
+      'kid steady (5/3/2)': fixed({ life: 5, shield: 3, science: 2 }),
+      'kid meter-aware': (state: GameState): Allocation => {
+        const life = state.meters.lifeSupport < policy.kidLowMeter ? policy.kidRecoveryLifeUnits : policy.kidLifeUnits;
+        // Air takes priority if both meters are low; never exceed the ten-unit budget.
+        const shield = Math.min(POWER_UNITS_PER_DAY - life,
+          state.meters.crewHealth < policy.kidLowMeter ? policy.kidRecoveryShieldUnits : policy.baseShield);
+        return { life, shield, science: POWER_UNITS_PER_DAY - life - shield };
+      },
+    } : {
+      'kid storm switch (4/3/3 or 4/6/0)': (state: GameState) => ({ ...(knownSeverity(state)
+        >= POLICY.kidStormSeverity ? POLICY.kidStorm : POLICY.kidNormal) }),
+      [`kid extra air (${policy.kidLifeUnits} / ${policy.baseShield} + floor(${policy.shieldPerSeverity} x warning) / rest)`]: (state: GameState) => {
+        const shield = Math.min(POWER_UNITS_PER_DAY - policy.kidLifeUnits,
+          policy.baseShield + Math.floor(policy.shieldPerSeverity * knownSeverity(state)));
+        return { life: policy.kidLifeUnits, shield, science: POWER_UNITS_PER_DAY - policy.kidLifeUnits - shield };
+      },
+    }),
   };
 }

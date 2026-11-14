@@ -154,11 +154,11 @@ describe('turn resolution', () => {
     expect(first.state.carryOver).toMatchObject([{
       id: 'brownout-1', dueDay: 2, meter: 'lifeSupport', delta: -RULES.brownoutLifeSupportDrain,
     }]);
-    expect(first.result.explanations.power).toContain('Battery empty');
+    expect(first.result.explanations.power).toContain('battery ran out');
     const next = applyTurn(deepFreeze(first.state), { life: 4, shield: 6, science: 0 });
     expect(next.state.meters.lifeSupport).toBe(start.meters.lifeSupport - RULES.brownoutLifeSupportDrain);
     expect(next.state.carryOver.map(effect => effect.id)).toEqual(['brownout-2']);
-    expect(next.result.explanations.lifeSupport).toBe('Battery empty! Air will drop tomorrow.');
+    expect(next.result.explanations.lifeSupport).toBe('Air will drop tomorrow because the battery ran out.');
     const exactZero = { ...start, meters: { ...start.meters, power: 3 * RULES.powerCostPerShieldUnit + 3 * RULES.powerCostPerScienceUnit - RULES.powerRechargePerDay } };
     expect(applyTurn(exactZero, balanced).state.carryOver[0].id).toBe('brownout-1');
     const positive = { ...start, meters: { ...start.meters, power: 3 * RULES.powerCostPerShieldUnit + 3 * RULES.powerCostPerScienceUnit - RULES.powerRechargePerDay + 1 } };

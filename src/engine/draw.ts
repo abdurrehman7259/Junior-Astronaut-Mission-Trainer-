@@ -24,6 +24,28 @@ function positions(count: number, maxRun: number): boolean[][] {
   return result;
 }
 
+const weightCache = new Map<string, number[]>();
+function choosePositions(count: number, rules: EngineRules, rng: ReturnType<typeof createRng>): boolean[] {
+  const { maxConsecutiveStorms, consecutiveStormWeight } = rules.draw;
+  const masks = positions(count, maxConsecutiveStorms);
+  if (masks.length === 0) throw new Error('Draw rules cannot space the storm days.');
+  // Preserve Moon's uniform selection and seeded output exactly.
+  if (consecutiveStormWeight === 1) return rng.pick(masks);
+  const key = `${count}:${maxConsecutiveStorms}:${consecutiveStormWeight}`;
+  let cumulative = weightCache.get(key);
+  if (!cumulative) {
+    let total = 0;
+    cumulative = masks.map(mask => {
+      const pairs = mask.reduce((sum, storm, day) => sum + Number(storm && day > 0 && mask[day - 1]), 0);
+      total += consecutiveStormWeight ** pairs;
+      return total;
+    });
+    weightCache.set(key, cumulative);
+  }
+  const ticket = rng.next() * cumulative[cumulative.length - 1];
+  return masks[cumulative.findIndex(weight => ticket < weight)];
+}
+
 export function drawWithRules(
   events: SolarEvent[], seed: number, excludeSetIds: string[], rules: EngineRules,
 ): SolarEvent[] {
@@ -55,11 +77,10 @@ export function drawWithRules(
     ]);
     const selectedQuiet = rng.shuffle(quiet).slice(0, MISSION_DAYS - stormCount);
 
-    const masks = positions(stormCount, rules.draw.maxConsecutiveStorms);
-    if (masks.length === 0) throw new Error('Draw rules cannot space the storm days.');
+    const mask = choosePositions(stormCount, rules, rng);
     let stormIndex = 0;
     let quietIndex = 0;
-    const result = rng.pick(masks).map(storm => storm
+    const result = mask.map(storm => storm
       ? selectedStorms[stormIndex++] : selectedQuiet[quietIndex++]);
     if (!excluded.has(eventSetIdOf(result))) return result.map(event => ({ ...event }));
   }

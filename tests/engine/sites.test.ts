@@ -3,7 +3,7 @@ import { applyTurn, createGame, drawEventSet, previewTurn, RULES, RULES_BY_SITE,
 import { siteOf } from '../../src/shared/eventSet';
 import { GameStateSchema, TurnResultSchema } from '../../src/shared/schemas';
 import { SITE_IDS, UNKNOWN_FORECAST_EVENT } from '../../src/shared/sites';
-import { MISSION_DAYS } from '../../src/shared/types';
+import { MISSION_DAYS, type SiteId } from '../../src/shared/types';
 import { knownSeverity, strategies } from '../../scripts/lib/strategies';
 import { selectedSites } from '../../scripts/simulate';
 import { EVENTS } from './fixtures/events';
@@ -33,6 +33,13 @@ describe('one engine, per-site rules', () => {
     GameStateSchema.parse(applyTurn(legacy, balanced).state);
   });
 
+  it('rejects unknown sites with a clear RangeError', () => {
+    for (const site of ['venus', 'toString', '__proto__']) {
+      expect(() => createGame(1, daysOf('QUIET'), site as SiteId))
+        .toThrow(new RangeError(`Unknown site "${site}"; choose moon or mars.`));
+    }
+  });
+
   it('keeps Moon previews exact while Mars assumes calm for every allocation and event kind', () => {
     for (const site of SITE_IDS) {
       for (const severity of [0, 1, 2, 3] as const) {
@@ -56,6 +63,9 @@ describe('one engine, per-site rules', () => {
                 // Deep equality covers metadata, power, science, explanations and status too.
                 expect(preview).toEqual(previewTurn(calm, allocation));
                 expect(preview.event).toEqual(UNKNOWN_FORECAST_EVENT);
+                expect(preview.explanations.crewHealth)
+                  .toBe('If the Sun stays calm, no game dose reaches the crew.');
+                expect(applied.result.explanations.crewHealth).not.toContain('If the Sun');
                 expect(preview.dose).toEqual({ incoming: 0, blocked: 0, received: 0 });
                 expect(preview.after.crewHealth).toBe(state.meters.crewHealth);
                 if (severity > 0) {
@@ -99,10 +109,11 @@ describe('one engine, per-site rules', () => {
     }
   });
 
-  it('uses a gentler recharge cut and the same game doses without changing draw rules', () => {
+  it('uses gentler recharge, slightly stronger shields and the same game doses on Mars', () => {
     expect(RULES_BY_SITE.moon).toBe(RULES);
     expect(RULES_BY_SITE.mars.powerRechargePerDay).toBeLessThan(RULES.powerRechargePerDay);
     expect(RULES_BY_SITE.mars.dosePerSeverity).toEqual(RULES.dosePerSeverity);
+    expect(RULES_BY_SITE.mars.shieldHalfProtectionUnits).toBe(2.75);
     for (const site of SITE_IDS) {
       const state = createGame(1, daysOf('QUIET'), site);
       expect(applyTurn(state, { life: 10, shield: 0, science: 0 }).result.deltas.power)
@@ -110,7 +121,6 @@ describe('one engine, per-site rules', () => {
     }
     const marsPool = EVENTS.map(event => ({ ...event, marsImpact: 'game-only' as const }));
     const drawn = drawEventSet(marsPool, 1, []);
-    expect(drawn).toEqual(drawEventSet(EVENTS, 1, []).map(event => ({ ...event, marsImpact: 'game-only' })));
     expect(drawn.filter(event => event.kind !== 'QUIET').length).toBeGreaterThanOrEqual(3);
     expect(drawn.filter(event => event.kind !== 'QUIET').length).toBeLessThanOrEqual(5);
   });
@@ -143,5 +153,25 @@ describe('simulator site support', () => {
     expect(strategies('mars')['adaptive-plus'](lowAir).life)
       .toBeGreaterThan(strategies('mars')['adaptive-plus'](calmReport).life);
     expect(knownSeverity(createGame(1, daysOf('CME', 3), 'moon'))).toBe(3);
+  });
+
+  it('keeps Mars kid policies simple, meter-aware and distinct from adaptive policies', () => {
+    const policies = strategies('mars');
+    const kid = policies['kid meter-aware'];
+    const state = createGame(1, daysOf('CME', 3), 'mars');
+    for (const [lifeSupport, crewHealth, expected] of [
+      [50, 50, { life: 5, shield: 3, science: 2 }],
+      [49, 50, { life: 6, shield: 3, science: 1 }],
+      [50, 49, { life: 5, shield: 5, science: 0 }],
+      [49, 49, { life: 6, shield: 4, science: 0 }],
+    ] as const) {
+      const input = { ...state, meters: { ...state.meters, lifeSupport, crewHealth } };
+      expect(kid(input)).toEqual(expected);
+      expect(policies['kid steady (5/3/2)'](input)).toEqual({ life: 5, shield: 3, science: 2 });
+      expect(policies['balanced (4/3/3)'](input)).toEqual(balanced);
+    }
+    const low = { ...state, meters: { ...state.meters, crewHealth: 49 } };
+    expect(kid(low)).not.toEqual(policies.adaptive(low));
+    expect(kid(low)).not.toEqual(policies['adaptive-plus'](low));
   });
 });
