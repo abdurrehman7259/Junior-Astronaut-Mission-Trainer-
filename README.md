@@ -13,6 +13,7 @@ The game has Moon and Mars missions (Mars in progress).
 | Person | Roles |
 |---|---|
 | **Abdur Rehman Khan** | Product owner, game designer, playtester, science checker, designer, pitch lead |
+| **Mairaj Alam** | Playtester |
 
 The game concept came from the team. AI tools were used for implementation only, under the team's direction.
 
