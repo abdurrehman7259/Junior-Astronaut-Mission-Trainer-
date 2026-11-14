@@ -15,7 +15,7 @@ const make = (n: number, kind: SolarEvent['kind'], severity: SolarEvent['severit
   severity,
   ...(kind === 'FLR' ? { flareClass: severity === 3 ? 'X1.0' : severity === 2 ? 'M1.0' : 'C1.0' } : {}),
   ...(kind === 'CME' ? { cmeSpeedKms: 400 + severity * 400 } : {}),
-  kidText: 'Placeholder event. Not real data.',
+  kidText: 'Placeholder event for testing only.',
   sourceUrl: DONKI_HOME,
 });
 

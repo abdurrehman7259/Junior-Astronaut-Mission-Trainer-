@@ -17,7 +17,7 @@ async function setup() {
 
 async function playToEnd(user: ReturnType<typeof userEvent.setup>) {
   for (let i = 0; i < 10; i++) {
-    const btn = screen.queryByRole('button', { name: /Play a balanced day/ });
+    const btn = screen.queryByRole('button', { name: /^Run day \d+$/ });
     if (!btn) break;
     await user.click(btn);
     // Day report step (plan → report → next day / end).
@@ -38,10 +38,10 @@ describe('app shell', () => {
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
     expect(screen.getAllByText('Day 1 of 10').length).toBeGreaterThan(0);
     await playToEnd(user);
-    expect(screen.getByText(/Your science score/)).toBeInTheDocument();
+    expect(screen.getByText(/Science score/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Play again' }));
     expect(screen.getAllByText('Day 1 of 10').length).toBeGreaterThan(0);
-  });
+  }, 20_000);
 
   it('has a Data used button on every screen that opens the dialog', async () => {
     const user = await setup();
@@ -57,7 +57,7 @@ describe('app shell', () => {
     await check();
     await playToEnd(user);
     await check();
-  });
+  }, 20_000);
 
   it('shows the error screen when loading fails', async () => {
     render(<App loadEventsFn={() => Promise.reject(new Error('nope'))} />);

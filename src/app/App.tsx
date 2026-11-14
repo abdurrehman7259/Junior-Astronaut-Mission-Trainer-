@@ -1,12 +1,14 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useMemo, useReducer, useRef } from 'react';
 import { AppShell } from '../ui/components/AppShell';
 import { DataPanel } from '../ui/components/DataPanel';
 import { EndScreen } from '../ui/screens/EndScreen';
 import { ErrorScreen } from '../ui/screens/ErrorScreen';
 import { LoadingScreen } from '../ui/screens/LoadingScreen';
 import { MissionScreen } from '../ui/screens/MissionScreen';
+import { ResolutionScreen } from '../ui/screens/ResolutionScreen';
 import { StartScreen } from '../ui/screens/StartScreen';
 import { loadEvents } from './data';
+import { engine } from './engine';
 import { initialState, newSeed, reducer } from './state';
 
 export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadEvents }) {
@@ -28,36 +30,58 @@ export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadE
     };
   }, [loadEventsFn]);
 
-  const { screen, game } = state;
-  const running = (screen === 'mission' || screen === 'report') && game ? (state.lastResult && screen === 'report' ? state.lastResult.day : game.day) : null;
+  const { screen, game, lastResult, allocation } = state;
+
+  // Live preview for the allocator (US-02): what today would do with the current plan.
+  const preview = useMemo(() => {
+    if (screen !== 'mission' || !game || game.status !== 'playing') return null;
+    try {
+      return engine.previewTurn(game, allocation);
+    } catch {
+      return null;
+    }
+  }, [screen, game, allocation]);
+
+  const dayShown =
+    screen === 'mission' && game ? game.day : screen === 'report' && lastResult ? lastResult.day : null;
 
   return (
     <>
       <AppShell
-        day={running}
+        day={dayShown}
         isPlaceholder={state.isPlaceholder}
         onOpenData={() => dispatch({ type: 'openDataPanel' })}
         dataButtonRef={dataButtonRef}
       >
         {screen === 'loading' && <LoadingScreen />}
         {screen === 'error' && <ErrorScreen />}
-        {screen === 'start' && <StartScreen onStart={(crewName) => dispatch({ type: 'startMission', seed: newSeed(), crewName })} />}
+        {screen === 'start' && (
+          <StartScreen onStart={(crewName) => dispatch({ type: 'startMission', seed: newSeed(), crewName })} />
+        )}
         {screen === 'mission' && game && (
           <MissionScreen
             game={game}
-            lastResult={state.lastResult}
-            onPlayDay={(allocation) => dispatch({ type: 'playDay', allocation })}
+            crewName={state.crewName}
+            allocation={allocation}
+            preview={preview}
+            lastResult={lastResult}
+            onAllocationChange={(a) => dispatch({ type: 'setAllocation', allocation: a })}
+            onConfirm={() => dispatch({ type: 'playDay', allocation })}
           />
         )}
-        {screen === 'report' && state.lastResult && (
-          <TemporaryReport
-            day={state.lastResult.day}
-            isFinal={state.lastResult.statusAfter !== 'playing'}
+        {screen === 'report' && lastResult && (
+          <ResolutionScreen
+            result={lastResult}
+            isFinal={lastResult.statusAfter !== 'playing'}
             onContinue={() => dispatch({ type: 'continue' })}
           />
         )}
         {screen === 'end' && game && (
-          <EndScreen game={game} onPlayAgain={() => dispatch({ type: 'playAgain', seed: newSeed() })} />
+          <EndScreen
+            game={game}
+            crewName={state.crewName}
+            onPlayAgain={() => dispatch({ type: 'playAgain', seed: newSeed() })}
+          />
         )}
       </AppShell>
       <DataPanel
@@ -68,17 +92,5 @@ export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadE
         returnFocusRef={dataButtonRef}
       />
     </>
-  );
-}
-
-/** Stand-in until F4's ResolutionScreen is wired in (same button labels). */
-function TemporaryReport({ day, isFinal, onContinue }: { day: number; isFinal: boolean; onContinue: () => void }) {
-  return (
-    <section className="stack">
-      <h1 tabIndex={-1}>Day {day} report</h1>
-      <button type="button" className="btn btn-primary btn-large" onClick={onContinue}>
-        {isFinal ? 'See how the mission went' : 'Next day'}
-      </button>
-    </section>
   );
 }

@@ -1,56 +1,73 @@
 import type { Allocation, GameState, TurnResult } from '../../shared/types';
 import { MISSION_DAYS } from '../../shared/types';
+import { EventCard } from '../components/EventCard';
+import { GlossaryTerm } from '../components/GlossaryTerm';
+import { Meters } from '../components/Meters';
+import { PowerAllocator } from '../components/PowerAllocator';
 import { ScreenHeading } from '../components/ScreenHeading';
-
-const SEVERITY_TEXT = ['Quiet day', 'Minor', 'Moderate', 'Strong'] as const;
-const KIND_TEXT = { FLR: 'Solar flare', CME: 'Solar cloud (CME)', QUIET: 'Quiet Sun' } as const;
-const BALANCED: Allocation = { life: 4, shield: 3, science: 3 };
+import './MissionScreen.css';
 
 interface Props {
   game: GameState;
+  crewName: string;
+  allocation: Allocation;
+  preview: TurnResult | null;
+  /** Yesterday's result, for the small change chips on the meters. */
   lastResult: TurnResult | null;
-  onPlayDay: (a: Allocation) => void;
+  onAllocationChange: (a: Allocation) => void;
+  onConfirm: () => void;
 }
 
-export function MissionScreen({ game, lastResult, onPlayDay }: Props) {
+const METER_LABEL = { power: 'Power reserve', lifeSupport: 'Life support', crewHealth: 'Crew health' } as const;
+
+export function MissionScreen({ game, crewName, allocation, preview, lastResult, onAllocationChange, onConfirm }: Props) {
   const event = game.events[game.day - 1]!;
-  const { meters } = game;
+  const dueToday = game.carryOver.filter((c) => c.dueDay === game.day);
+  const deltas = lastResult
+    ? { ...lastResult.deltas, science: lastResult.scienceGained }
+    : undefined;
+
   return (
-    <section>
-      <ScreenHeading>
-        Day {game.day} of {MISSION_DAYS}
-      </ScreenHeading>
+    <section className="mission stack">
+      <div className="mission-head">
+        <ScreenHeading>
+          Day {game.day} of {MISSION_DAYS}
+        </ScreenHeading>
+        <p className="mission-crew">Crew: {crewName}</p>
+      </div>
+
       <div className="mission-grid">
-        <div className="card">
-          <h2>Today&apos;s space weather</h2>
-          <p>Type: {KIND_TEXT[event.kind]}</p>
-          <p>Real date: {event.realDate}</p>
-          <p>Strength: {SEVERITY_TEXT[event.severity]}</p>
+        <div className="mission-col stack">
+          <EventCard event={event} day={game.day} />
+          <p className="mission-words">
+            Words to know: <GlossaryTerm k="solarFlare" />, <GlossaryTerm k="cme" />, <GlossaryTerm k="dose" />,{' '}
+            <GlossaryTerm k="shielding" />.
+          </p>
+          <Meters meters={game.meters} scienceScore={game.scienceScore} deltas={deltas} />
+          {dueToday.length > 0 && (
+            <div className="card mission-carry" role="note" aria-labelledby="carry-title">
+              <h2 id="carry-title" className="mission-carry-title">
+                From yesterday
+              </h2>
+              <ul>
+                {dueToday.map((c) => (
+                  <li key={c.id}>
+                    {METER_LABEL[c.meter]} {c.delta < 0 ? `▼ ${c.delta}` : `▲ +${c.delta}`}: {c.reason}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
-        <div className="card">
-          <h2>Your base</h2>
-          <ul className="meter-list">
-            <li>Power reserve: {meters.power}</li>
-            <li>Life support: {meters.lifeSupport}</li>
-            <li>Crew health: {meters.crewHealth}</li>
-            <li>Science score: {game.scienceScore}</li>
-          </ul>
-          <p />
-          <button type="button" className="btn btn-primary" onClick={() => onPlayDay(BALANCED)}>
-            Play a balanced day (4/3/3)
-          </button>
+        <div className="mission-col">
+          <PowerAllocator
+            value={allocation}
+            onChange={onAllocationChange}
+            preview={preview}
+            onConfirm={onConfirm}
+            day={game.day}
+          />
         </div>
-        {lastResult && (
-          <div className="card">
-            <h2>What happened on day {lastResult.day}</h2>
-            <ul className="meter-list">
-              <li>{lastResult.explanations.power}</li>
-              <li>{lastResult.explanations.lifeSupport}</li>
-              <li>{lastResult.explanations.crewHealth}</li>
-              <li>{lastResult.explanations.science}</li>
-            </ul>
-          </div>
-        )}
       </div>
     </section>
   );
