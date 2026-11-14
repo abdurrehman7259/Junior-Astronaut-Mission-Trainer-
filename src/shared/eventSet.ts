@@ -1,0 +1,28 @@
+/**
+ * Shared helpers both sides must agree on.
+ */
+import { POWER_UNITS_PER_DAY, type Allocation, type SolarEvent } from './types';
+
+/**
+ * Stable id for a drawn event set: 8 hex chars of FNV-1a over the ordered event ids.
+ * Same events in the same order give the same id. Used for GameState.eventSetId
+ * and for drawEventSet's excludeSetIds (FR-10: "Play again" gets a new set).
+ */
+export function eventSetIdOf(events: readonly Pick<SolarEvent, 'id'>[]): string {
+  let hash = 0x811c9dc5;
+  const text = events.map((e) => e.id).join('|');
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return 'set-' + hash.toString(16).padStart(8, '0');
+}
+
+/** True when every unit is a whole number in 0..10 and the total is exactly 10. */
+export function isValidAllocation(a: Allocation): boolean {
+  const parts = [a.life, a.shield, a.science];
+  return (
+    parts.every((n) => Number.isInteger(n) && n >= 0 && n <= POWER_UNITS_PER_DAY) &&
+    parts.reduce((s, n) => s + n, 0) === POWER_UNITS_PER_DAY
+  );
+}
