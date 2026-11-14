@@ -345,9 +345,9 @@ describe('findQuietDates', () => {
     expect(dates).not.toContain('2024-01-02');
   });
 
-  it('fails closed when dates cannot be verified or fewer than 15 are quiet', () => {
+  it('fails closed when dates cannot be verified or fewer than 10 are quiet', () => {
     expect(() => findQuietDates([{}], [], WINDOW)).toThrow('no usable UTC date');
-    expect(() => findQuietDates([], [], { startDate: '2024-01-01', endDate: '2024-01-14' })).toThrow('need at least 15');
+    expect(() => findQuietDates([], [], { startDate: '2024-01-01', endDate: '2024-01-09' })).toThrow('need at least 10');
     expect(() => findQuietDates([flare()], [], { startDate: '2024-05-10', endDate: '2024-05-10' })).toThrow('Only 0');
     expect(() => findQuietDates([], [], { startDate: '2024-02-30', endDate: '2024-03-31' })).toThrow('Invalid');
   });

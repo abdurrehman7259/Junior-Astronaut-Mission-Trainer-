@@ -87,6 +87,10 @@ export function mapCme(raw: unknown): SolarEvent | null {
 }
 
 /** Evenly spaced, endpoint-inclusive picks from an already sorted list. */
+/** QUIET days: at least the schema minimum (10), at most 15. Solar maximum 2024-2025 has only 13 (D-016). */
+export const QUIET_MIN = 10;
+export const QUIET_MAX = 15;
+
 function evenlySpaced<T>(values: readonly T[], count: number): T[] {
   if (values.length <= count) return [...values];
   if (count <= 0) return [];
@@ -133,10 +137,10 @@ export function findQuietDates(
     const date = new Date(day).toISOString().slice(0, 10);
     if (!busy.has(date)) candidates.push(date);
   }
-  if (candidates.length < 15) {
-    throw new Error(`Only ${candidates.length} truly QUIET dates in the DONKI window; need at least 15`);
+  if (candidates.length < QUIET_MIN) {
+    throw new Error(`Only ${candidates.length} truly QUIET dates in the DONKI window; need at least ${QUIET_MIN}`);
   }
-  return evenlySpaced(candidates, 15);
+  return evenlySpaced(candidates, QUIET_MAX);
 }
 
 function quietEvent(date: string): SolarEvent {
@@ -179,6 +183,6 @@ export function selectEvents(events: readonly SolarEvent[], quietDates: readonly
     .sort((a, b) => strength(b) - strength(a) || chronological(a, b)).slice(0, 40);
   const moderate = evenlySpaced(mapped.filter((e) => e.severity === 2).sort(chronological), 40);
   const minor = evenlySpaced(mapped.filter((e) => e.severity === 1).sort(chronological), 30);
-  const quiet = evenlySpaced([...new Set(quietDates)].sort(), 15).map(quietEvent);
+  const quiet = evenlySpaced([...new Set(quietDates)].sort(), QUIET_MAX).map(quietEvent);
   return [...strong, ...moderate, ...minor, ...quiet].sort(chronological);
 }

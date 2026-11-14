@@ -7,7 +7,7 @@ import { findQuietDates, mapCme, mapFlare, selectEvents } from './lib/donki';
 import { fetchJson, HttpError, HttpNetworkError, HttpTimeoutError, redactApiKey } from './lib/http';
 
 export const WINDOW = { startDate: '2024-01-01', endDate: '2025-12-31' } as const;
-export const SNAPSHOT_NOTES = 'Archived DONKI records: up to 40 strongest severity-3 events (game ranking: X multiplier or CME speed/1000), evenly spaced picks of up to 40 severity-2 and 30 severity-1 events, and 15 dates with no raw FLR or CME records, conservatively excluding all days touched by flare begin/peak/end times. Game-rule severity bands: A/B/C=1, M=2, X=3; CME speeds <500 km/s=1, 500–999 km/s=2, >=1000 km/s=3.';
+export const SNAPSHOT_NOTES = 'Archived DONKI records: up to 40 strongest severity-3 events (game ranking: X multiplier or CME speed/1000), evenly spaced picks of up to 40 severity-2 and 30 severity-1 events, and up to 15 (at least 10) dates with no raw FLR or CME records, conservatively excluding all days touched by flare begin/peak/end times. Game-rule severity bands: A/B/C=1, M=2, X=3; CME speeds <500 km/s=1, 500–999 km/s=2, >=1000 km/s=3.';
 const OUTPUT = fileURLToPath(new URL('../public/data/donki-events.json', import.meta.url));
 const CCMC_BASE = 'https://ccmc.gsfc.nasa.gov/DONKI-API/get';
 const GATEWAY_BASE = 'https://api.nasa.gov/DONKI';
