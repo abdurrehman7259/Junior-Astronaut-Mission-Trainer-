@@ -100,4 +100,17 @@ describe('StartScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
     expect(onStart).toHaveBeenCalledWith('Cadets', 'moon');
   });
+
+  it('shows the word Selected (not colour only) on the chosen campaign card', async () => {
+    const user = userEvent.setup();
+    render(<StartScreen onStart={() => {}} marsStatus="ready" />);
+    const cards = () => [...document.querySelectorAll('.site-card.is-selected')];
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0]).toHaveTextContent('Selected');
+    expect(cards()[0]).toHaveTextContent('Moon');
+    await user.click(screen.getByRole('radio', { name: /Mars/ }));
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0]).toHaveTextContent('Mars');
+    expect(cards()[0]!.querySelector('.site-dot')).not.toBeNull();
+  });
 });

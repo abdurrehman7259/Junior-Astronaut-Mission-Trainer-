@@ -37,7 +37,7 @@
   flex-direction: column;
   gap: var(--space-2);
   width: max-content;
-  max-width: min(18rem, 90vw);
+  max-width: min(18rem, calc(100vw - 2 * var(--gutter)));
   margin-top: var(--space-2);
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface-2);

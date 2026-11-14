@@ -62,7 +62,7 @@
 
   /* Type */
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-size-sm: 0.875rem; /* small print only (tagline, footer) */
+  --font-size-sm: 1rem; /* never below 16px (NFR-08); kept as a token for chips and notes */
   --font-size-body: 1rem;
   --font-size-lg: 1.25rem;
   --font-size-h2: clamp(1.375rem, 1.1rem + 1.2vw, 1.875rem);

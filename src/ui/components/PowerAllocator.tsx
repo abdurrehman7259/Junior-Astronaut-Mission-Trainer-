@@ -287,7 +287,11 @@ export function PowerAllocator({
         </button>
       </div>
 
-      <div className="pa-preview" aria-live="polite">
+      {/* One short announcement when the plan becomes complete; the full preview is read on demand, not on every change. */}
+      <p className="visually-hidden" aria-live="polite">
+        {complete ? 'Preview ready below.' : ''}
+      </p>
+      <div className="pa-preview">
         {complete && preview ? (
           <PreviewPanel preview={preview} site={site} />
         ) : (

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { SITE_IDS, SITES } from '../../shared/sites';
 import type { SiteId } from '../../shared/types';
 import { dayWordCap } from '../../app/state';
+import { CheckIcon } from '../components/icons';
 import { ScreenHeading } from '../components/ScreenHeading';
 import { CREW_NAME_MAX, DEFAULT_CREW_NAME, loadCrewName, sanitizeCrewName, saveCrewName } from './crewName';
 import './StartScreen.css';
@@ -34,14 +35,14 @@ function SiteIcon({ site }: { site: SiteId }) {
     <svg className="site-icon" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
       {site === 'moon' ? (
         <>
-          <circle cx="24" cy="24" r="20" fill="#b4b8c6" />
+          <circle cx="24" cy="24" r="20" fill="#b4b8c6" stroke="var(--color-text)" strokeWidth="2" />
           <circle cx="17" cy="18" r="4" fill="#8d92a3" />
           <circle cx="30" cy="30" r="5" fill="#8d92a3" />
           <circle cx="31" cy="15" r="2.5" fill="#8d92a3" />
         </>
       ) : (
         <>
-          <circle cx="24" cy="24" r="20" fill="#c1502e" />
+          <circle cx="24" cy="24" r="20" fill="#c1502e" stroke="var(--color-text)" strokeWidth="2" />
           <path d="M8 28 Q24 20 40 30" fill="none" stroke="#8f3a20" strokeWidth="3" />
           <circle cx="18" cy="16" r="3.5" fill="#9c3f22" />
           <circle cx="32" cy="34" r="3" fill="#9c3f22" />
@@ -124,9 +125,16 @@ export function StartScreen({
                     aria-describedby={`site-${id}-desc`}
                     onChange={() => setPicked(id)}
                   />
+                  <span className="site-dot" aria-hidden="true" />
                   <SiteIcon site={id} />
                   <span className="site-text">
-                    <strong id={`site-${id}-name`}>{SITES[id].name}</strong>
+                    <span className="site-head">
+                      <strong id={`site-${id}-name`}>{SITES[id].name}</strong>
+                      <span className="site-selected" aria-hidden="true">
+                        <CheckIcon size={18} />
+                        Selected
+                      </span>
+                    </span>
                     <span id={`site-${id}-desc`} className="site-desc">
                       {SITE_BLURB[id]}
                     </span>

@@ -107,6 +107,50 @@
 .site-card:has(.site-radio:focus-visible) {
   outline: var(--focus-ring);
   outline-offset: var(--focus-ring-offset);
+  box-shadow: 0 0 0 calc(var(--focus-ring-offset) + var(--focus-ring-width) + 2px) var(--color-bg);
+}
+/* Fallback for browsers without :has(): ring the radio dot. */
+.site-radio:focus-visible ~ .site-dot {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
+}
+/* Selection never relies on colour: a filled dot and the word "Selected". */
+.site-dot {
+  flex: none;
+  align-self: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: 3px solid var(--color-text);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+.is-selected .site-dot {
+  border-color: var(--color-accent);
+  background: radial-gradient(circle, var(--color-accent) 0 45%, transparent 50%);
+}
+.is-disabled .site-dot {
+  border-style: dashed;
+  border-color: var(--color-text-muted);
+}
+.site-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+}
+.site-selected {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0 var(--space-3);
+  font-weight: 800;
+  color: var(--color-on-accent);
+  background: var(--color-accent);
+  border-radius: var(--radius-pill);
+  visibility: hidden;
+}
+.is-selected .site-selected {
+  visibility: visible;
 }
 .site-radio {
   position: absolute;
@@ -131,4 +175,8 @@
 .site-note {
   font-weight: 700;
   color: var(--color-text);
+}
+.site-text {
+  flex: 1;
+  min-width: 0;
 }
