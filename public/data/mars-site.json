@@ -1,0 +1,39 @@
+{
+  "name": "Jezero Crater",
+  "summary": "An ancient lake bed on Mars, Jezero Crater is where NASA's Perseverance rover landed in 2021.",
+  "latitude": 18.4,
+  "longitude": 77.7,
+  "marsTrekUrl": "https://trek.nasa.gov/mars/",
+  "solLength": "24 hours, 39 minutes, 35 seconds",
+  "lightTimeMinutes": {
+    "min": 4,
+    "max": 24
+  },
+  "sources": [
+    {
+      "title": "NASA: Perseverance rover location and February 18, 2021 landing",
+      "url": "https://science.nasa.gov/mission/mars-2020-perseverance/location-map/"
+    },
+    {
+      "title": "NASA: Perseverance landing site, ancient Jezero lake",
+      "url": "https://science.nasa.gov/mission/mars-2020-perseverance/"
+    },
+    {
+      "title": "NASA NTRS: Fassett and Goudge, crater lakes, Table 4 (Jezero coordinates, page 24)",
+      "url": "https://ntrs.nasa.gov/api/citations/20210023904/downloads/ANUGAdraft_16_NoLine_ForSTI.pdf"
+    },
+    {
+      "title": "NASA: Barsoom, definition and length of a Martian sol",
+      "url": "https://www.nasa.gov/image-article/barsoom/"
+    },
+    {
+      "title": "NASA NTRS: Why Moon to Mars (2025 IAC), one-way light-time, page 3",
+      "url": "https://ntrs.nasa.gov/api/citations/20250009282/downloads/2025%20IAC%20-%20Why%20Moon%20and%20Mars%20-%200916%20Edits.pdf"
+    },
+    {
+      "title": "NASA Mars Trek (homepage fallback; no documented Jezero deep-link format verified)",
+      "url": "https://trek.nasa.gov/mars/"
+    }
+  ],
+  "retrievedAt": "2026-11-14T16:55:29.163Z"
+}
