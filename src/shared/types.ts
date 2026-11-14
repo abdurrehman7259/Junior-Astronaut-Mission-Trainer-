@@ -35,6 +35,9 @@ export type MeterKey = keyof Meters;
 
 export type GameStatus = 'playing' | 'won' | 'ended';
 
+/** Where the mission happens (D-023). */
+export type SiteId = 'moon' | 'mars';
+
 export type SolarEventKind = 'FLR' | 'CME' | 'QUIET';
 /** 0 = quiet day, 1 = minor, 2 = moderate, 3 = strong. */
 export type Severity = 0 | 1 | 2 | 3;
@@ -58,6 +61,12 @@ export interface SolarEvent {
   kidText: string;
   /** Link back to the DONKI record (or to a DONKI search for that date, for QUIET days). */
   sourceUrl: string;
+  /**
+   * Mars pool only (B10). 'listed' = the DONKI CME analysis lists Mars as an impact location.
+   * 'game-only' = a real event reused for Mars; the UI must say
+   * "Recorded by NASA. In the game, this storm also reaches Mars." Absent on Moon events.
+   */
+  marsImpact?: 'listed' | 'game-only';
 }
 
 /** Radiation numbers for one turn, in game units (game rules, not real dose). */
@@ -124,6 +133,11 @@ export interface GameState {
   /** Pending consequences for later days. */
   carryOver: CarryOverEffect[];
   status: GameStatus;
+  /**
+   * Mission site. The engine (B9) always sets it; it is optional only so that saves and states made before
+   * site support still load. Absent means 'moon'.
+   */
+  site?: SiteId;
 }
 
 /** A committed data file in public/data/. */
@@ -161,6 +175,37 @@ export interface DoseCalibration {
   note: string;
   source: string;
   sourceUrl: string;
+}
+
+/** One cited source (title + https URL). */
+export interface SourceRef {
+  title: string;
+  url: string;
+}
+
+/**
+ * public/data/mars-site.json (B10): real facts about the Mars site, each one cited.
+ * Numbers here are real and sourced; game-rule numbers never go in this file.
+ */
+export interface MarsSiteInfo {
+  /** "Jezero Crater". */
+  name: string;
+  /** Plain-language one-liner, at most 25 words (draft; lead agent rewrites it). */
+  summary: string;
+  /** Approximate centre, degrees (planetocentric latitude, east longitude), as given by the source. */
+  latitude: number;
+  longitude: number;
+  /** NASA Mars Trek link that opens on the site. */
+  marsTrekUrl: string;
+  /** Optional image or tile URL from Mars Trek (https), only if its licence allows display. Credited in the Data used panel. */
+  imageUrl?: string;
+  imageCredit?: string;
+  /** Mars solar day length, e.g. "about 24 hours 39 minutes", with its source. */
+  solLength: string;
+  /** Earth–Mars one-way light time range in minutes, e.g. { min: 4, max: 24 }, with its source. */
+  lightTimeMinutes: { min: number; max: number };
+  sources: SourceRef[];
+  retrievedAt: string;
 }
 
 /** Response body of GET /.netlify/functions/space-weather (always HTTP 200). */

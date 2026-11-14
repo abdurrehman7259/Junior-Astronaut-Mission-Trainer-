@@ -14,6 +14,7 @@ import {
   type DoseCalibration,
   type GameState,
   type LiveSpaceWeather,
+  type MarsSiteInfo,
   type Meters,
   type ScienceFact,
   type SolarEvent,
@@ -58,6 +59,7 @@ export const SolarEventSchema = z
     cmeSpeedKms: z.number().positive().optional(),
     kidText: z.string().min(1),
     sourceUrl: httpsUrl,
+    marsImpact: z.enum(['listed', 'game-only']).optional(),
   })
   .refine((e) => (e.kind === 'QUIET') === (e.severity === 0), {
     message: 'QUIET events have severity 0, and only QUIET events do',
@@ -120,6 +122,7 @@ export const GameStateSchema = z.object({
   events: z.array(SolarEventSchema).length(MISSION_DAYS),
   carryOver: z.array(CarryOverEffectSchema),
   status: GameStatusSchema,
+  site: z.enum(['moon', 'mars']).optional(),
 });
 
 /** Schema for a Snapshot<T> file, given the item schema. */
@@ -146,6 +149,40 @@ export const DonkiSnapshotSchema = snapshotSchema(SolarEventSchema)
   .refine((s) => new Set(s.items.map((e) => e.id)).size === s.items.length, {
     message: 'Event ids must be unique',
   });
+
+/**
+ * public/data/donki-mars-events.json (B10): >= 15 items, >= 8 storms (>= 3 at severity >= 2), >= 7 QUIET,
+ * unique ids, and every storm carries marsImpact ('listed' preferred; 'game-only' when fewer than 10 are listed).
+ */
+export const DonkiMarsSnapshotSchema = snapshotSchema(SolarEventSchema)
+  .refine((s) => s.items.length >= 15, { message: 'Need at least 15 events' })
+  .refine((s) => s.items.filter((e) => e.kind !== 'QUIET').length >= 8, { message: 'Need at least 8 storms' })
+  .refine((s) => s.items.filter((e) => e.severity >= 2).length >= 3, { message: 'Need at least 3 storms at severity >= 2' })
+  .refine((s) => s.items.filter((e) => e.kind === 'QUIET').length >= 7, { message: 'Need at least 7 QUIET days' })
+  .refine((s) => s.items.every((e) => e.kind === 'QUIET' || e.marsImpact !== undefined), {
+    message: 'Every Mars storm needs marsImpact',
+  })
+  .refine((s) => new Set(s.items.map((e) => e.id)).size === s.items.length, { message: 'Event ids must be unique' });
+
+const SourceRefSchema = z.object({ title: z.string().min(1), url: httpsUrl });
+
+/** public/data/mars-site.json (B10). */
+export const MarsSiteInfoSchema = z.object({
+  name: z.string().min(1),
+  summary: z
+    .string()
+    .min(1)
+    .refine((s) => countWords(s) <= 25, { message: 'Summary must be 25 words or fewer' }),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(360),
+  marsTrekUrl: httpsUrl,
+  imageUrl: httpsUrl.optional(),
+  imageCredit: z.string().min(1).optional(),
+  solLength: z.string().min(1),
+  lightTimeMinutes: z.object({ min: z.number().positive(), max: z.number().positive() }),
+  sources: z.array(SourceRefSchema).min(1),
+  retrievedAt: isoDateTime,
+});
 
 export const ScienceFactSchema = z.object({
   id: z.string().min(1),
@@ -191,4 +228,6 @@ export type SchemaTypeChecks = [
   Assert<Equal<z.infer<typeof OsdrSnapshotSchema>, Snapshot<ScienceFact>>>,
   Assert<Equal<z.infer<typeof DoseCalibrationSchema>, DoseCalibration>>,
   Assert<Equal<z.infer<typeof LiveSpaceWeatherSchema>, LiveSpaceWeather>>,
+  Assert<Equal<z.infer<typeof DonkiMarsSnapshotSchema>, Snapshot<SolarEvent>>>,
+  Assert<Equal<z.infer<typeof MarsSiteInfoSchema>, MarsSiteInfo>>,
 ];

@@ -1,7 +1,7 @@
 /**
  * Shared helpers both sides must agree on.
  */
-import { POWER_UNITS_PER_DAY, type Allocation, type SolarEvent } from './types';
+import { POWER_UNITS_PER_DAY, type Allocation, type GameState, type SiteId, type SolarEvent } from './types';
 
 /**
  * Stable id for a drawn event set: 8 hex chars of FNV-1a over the ordered event ids.
@@ -16,6 +16,11 @@ export function eventSetIdOf(events: readonly Pick<SolarEvent, 'id'>[]): string 
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return 'set-' + hash.toString(16).padStart(8, '0');
+}
+
+/** The site of a game state ('moon' when absent: states made before site support). */
+export function siteOf(state: Pick<GameState, 'site'>): SiteId {
+  return state.site ?? 'moon';
 }
 
 /** True when every unit is a whole number in 0..10 and the total is exactly 10. */
