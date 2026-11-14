@@ -1,0 +1,59 @@
+.glossary-term {
+  position: relative;
+  display: inline;
+}
+.glossary-trigger {
+  position: relative;
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+/* Extend the hit area to about 44px tall without changing layout. */
+.glossary-trigger::after {
+  content: '';
+  position: absolute;
+  inset: -12px -6px;
+}
+.glossary-mark {
+  display: inline-block;
+  margin-inline-start: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.glossary-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: var(--z-header);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  width: max-content;
+  max-width: min(18rem, 90vw);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--font-size-body);
+  font-weight: 400;
+  line-height: var(--line-height);
+  text-align: start;
+}
+.glossary-popover a {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-link);
+}
