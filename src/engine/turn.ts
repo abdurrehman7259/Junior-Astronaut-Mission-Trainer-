@@ -19,8 +19,15 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
   const event = state.events[state.day - 1];
   const due = state.carryOver.filter(effect => effect.dueDay === state.day);
   const carryOver: CarryOverEffect[] = state.carryOver
-    .filter(effect => effect.dueDay !== state.day).map(effect => ({ ...effect }));
+    .filter(effect => effect.dueDay > state.day && effect.dueDay <= MISSION_DAYS)
+    .map(effect => ({ ...effect }));
   const after = { ...state.meters };
+  const finalDay = state.day === MISSION_DAYS;
+  function consequence(id: string, delta: number, reason: string) {
+    if (finalDay) after.lifeSupport += delta;
+    else carryOver.push({ id: `${id}-${state.day}`, dueDay: state.day + 1,
+      meter: 'lifeSupport', delta, reason });
+  }
   // Sum today's consequences and direct changes, then clamp once at resolution's end.
   for (const effect of due) after[effect.meter] += effect.delta;
 
@@ -28,32 +35,32 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
   const recovery = Math.max(0, allocation.life - rules.lifeSupportMinUnits) * rules.lifeSupportRecoveryPerExtraUnit;
   after.lifeSupport += recovery;
   if (airShortfall > 0) {
-    carryOver.push({
-      id: `air-${state.day}`, dueDay: state.day + 1, meter: 'lifeSupport',
-      delta: -airShortfall * rules.lifeSupportDrainPerMissingUnit, reason: carryReasons.air,
-    });
+    consequence('air', -airShortfall * rules.lifeSupportDrainPerMissingUnit, carryReasons.air);
   }
 
+  // Game rule: an underfunded system runs for only its funded fraction of today.
+  // Both systems share the available reserve proportionally; life units stay independent.
+  const available = Math.max(0, after.power
+    + (event.kind === 'CME' ? rules.powerRechargeOnCme : rules.powerRechargePerDay));
+  const cost = allocation.shield * rules.powerCostPerShieldUnit
+    + allocation.science * rules.powerCostPerScienceUnit;
+  const funded = cost === 0 ? 1 : Math.min(1, available / cost);
+  const effectiveShield = allocation.shield * funded;
   const incoming = event.kind === 'QUIET' ? 0 : rules.dosePerSeverity[event.severity];
   // Fraction blocked = shield / (shield + half-protection units).
   // Round received dose up: shields cannot erase all dose on storm days.
   const received = Math.ceil(incoming * rules.shieldHalfProtectionUnits
-    / (allocation.shield + rules.shieldHalfProtectionUnits));
+    / (effectiveShield + rules.shieldHalfProtectionUnits));
   const dose = { incoming, blocked: incoming - received, received };
   after.crewHealth -= received * rules.healthLossPerDose;
-  after.power += (event.kind === 'CME' ? rules.powerRechargeOnCme : rules.powerRechargePerDay)
-    - allocation.shield * rules.powerCostPerShieldUnit - allocation.science * rules.powerCostPerScienceUnit;
-  after.power = clampMeter(after.power);
-  after.lifeSupport = clampMeter(after.lifeSupport);
-  after.crewHealth = clampMeter(after.crewHealth);
+  after.power = clampMeter(available - cost);
   const brownout = after.power === METER_MIN;
   if (brownout) {
-    carryOver.push({
-      id: `brownout-${state.day}`, dueDay: state.day + 1, meter: 'lifeSupport',
-      delta: -rules.brownoutLifeSupportDrain, reason: carryReasons.brownout,
-    });
+    consequence('brownout', -rules.brownoutLifeSupportDrain, carryReasons.brownout);
   }
-  const scienceGained = allocation.science * rules.sciencePerUnit;
+  after.lifeSupport = clampMeter(after.lifeSupport);
+  after.crewHealth = clampMeter(after.crewHealth);
+  const scienceGained = Math.floor(allocation.science * funded * rules.sciencePerUnit);
   const statusAfter = after.crewHealth === METER_MIN || after.lifeSupport === METER_MIN
     ? 'ended' : state.day === MISSION_DAYS ? 'won' : 'playing';
   const result: TurnResult = {
@@ -64,7 +71,9 @@ export function resolveTurn(state: GameState, allocation: Allocation, rules: Eng
       crewHealth: after.crewHealth - state.meters.crewHealth,
     },
     scienceBefore: state.scienceScore, scienceGained, scienceAfter: state.scienceScore + scienceGained,
-    dose, explanations: explainTurn({ allocation, event, dose, due, airShortfall, recovery, brownout, scienceGained }),
+    dose, explanations: explainTurn({ allocation, event, dose, due, airShortfall,
+      recovery: Math.max(0, after.lifeSupport - state.meters.lifeSupport),
+      brownout, scienceGained, finalDay, underfunded: funded < 1 }),
     statusAfter,
   };
   const next: GameState = {

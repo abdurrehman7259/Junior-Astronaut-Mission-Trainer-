@@ -7,17 +7,25 @@ export const RULES = {
     scienceScore: 0, // Starting science points.
   },
   lifeSupportMinUnits: 4, // Life units needed to avoid tomorrow's air loss.
-  lifeSupportDrainPerMissingUnit: 5, // Tomorrow's air loss for each missing life unit.
+  lifeSupportDrainPerMissingUnit: 10, // Air loss per missing life unit; immediate on the final day.
   lifeSupportRecoveryPerExtraUnit: 2, // Air restored today per life unit above the minimum.
-  dosePerSeverity: [0, 12, 24, 36], // Incoming game dose for quiet, minor, moderate and strong events.
+  dosePerSeverity: [0, 15, 30, 45], // Incoming game dose for quiet, minor, moderate and strong events.
   shieldHalfProtectionUnits: 3, // Shield units blocking half the incoming dose; more give smaller gains.
   healthLossPerDose: 1, // Health lost per received game dose unit.
   sciencePerUnit: 5, // Science points earned per science unit.
-  powerRechargePerDay: 8, // Daily reserve recharge on quiet and flare days.
+  powerRechargePerDay: 5, // Daily reserve recharge on quiet and flare days.
   powerRechargeOnCme: 4, // Reduced reserve recharge on CME days.
   powerCostPerShieldUnit: 2, // Extra reserve consumed by each shield unit.
   powerCostPerScienceUnit: 3, // Extra reserve consumed by each science unit.
-  brownoutLifeSupportDrain: 6, // Tomorrow's air loss when today's reserve finishes empty.
+  brownoutLifeSupportDrain: 15, // Air loss on empty reserve; immediate on the final day.
+  strategy: {
+    lifeUnits: 4, // Simulator adaptive policy: daily life allocation.
+    shieldPerSeverity: 2, // Simulator adaptive policy: shield units per severity step.
+    lowLifeSupport: 40, // Adaptive-plus starts air recovery below this meter.
+    recoveryLifeUnits: 6, // Adaptive-plus life allocation during recovery.
+    lowCrewHealth: 40, // Adaptive-plus adds protection below this meter.
+    extraShield: 1, // Adaptive-plus extra shield units when crew health is low.
+  },
   draw: {
     minStorms: 3, // Fewest storm events in a mission.
     maxStorms: 5, // Most storm events in a mission.

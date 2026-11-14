@@ -15,7 +15,7 @@ export function withRules(overrides: EngineRules): GameEngine {
     createGame(seed, eventSet) {
       if (eventSet.length !== MISSION_DAYS) throw new RangeError(`A mission needs exactly ${MISSION_DAYS} events.`);
       return {
-        day: 1, seed, status: 'playing',
+        day: 1, seed: seed >>> 0, status: 'playing',
         meters: { power: rules.start.power, lifeSupport: rules.start.lifeSupport, crewHealth: rules.start.crewHealth },
         scienceScore: rules.start.scienceScore, history: [], carryOver: [],
         events: eventSet.map(event => ({ ...event })), eventSetId: eventSetIdOf(eventSet),

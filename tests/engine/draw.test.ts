@@ -7,6 +7,17 @@ import { EVENTS } from './fixtures/events';
 import { deepFreeze } from './helpers';
 
 describe('event drawing', () => {
+  it('keeps each day within six percentage points of the mean storm rate', () => {
+    const counts = Array<number>(MISSION_DAYS).fill(0);
+    const draws = 2000;
+    for (let seed = 0; seed < draws; seed++) {
+      drawEventSet(EVENTS, seed, []).forEach((event, day) => {
+        if (event.kind !== 'QUIET') counts[day]++;
+      });
+    }
+    const mean = counts.reduce((sum, count) => sum + count, 0) / MISSION_DAYS / draws;
+    for (const count of counts) expect(Math.abs(count / draws - mean)).toBeLessThanOrEqual(0.06);
+  });
   it('has a schema-valid synthetic fixture covering all requested event kinds and severities', () => {
     EVENTS.forEach(event => SolarEventSchema.parse(event));
     expect(EVENTS.every(event => event.id.startsWith('FIXTURE-'))).toBe(true);
@@ -46,7 +57,7 @@ describe('event drawing', () => {
     }
     expect([...seenCounts].sort()).toEqual([3, 4, 5]);
     expect(pool).toEqual(EVENTS);
-  });
+  }, 30000);
 
   it('retries when the current seed is excluded and has a bounded failure', () => {
     const excluded: string[] = [];

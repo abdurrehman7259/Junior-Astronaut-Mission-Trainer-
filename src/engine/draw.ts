@@ -3,6 +3,27 @@ import { MISSION_DAYS, type SolarEvent } from '../shared/types';
 import { createRng } from './rng';
 import type { EngineRules } from './rules';
 
+// Enumerate equally likely valid position masks, rather than weighting quiet-day gaps.
+const positionCache = new Map<string, boolean[][]>();
+function positions(count: number, maxRun: number): boolean[][] {
+  const key = `${count}:${maxRun}`;
+  const cached = positionCache.get(key);
+  if (cached) return cached;
+  const result: boolean[][] = [];
+  function visit(prefix: boolean[], remaining: number, run: number) {
+    if (remaining < 0 || remaining > MISSION_DAYS - prefix.length) return;
+    if (prefix.length === MISSION_DAYS) {
+      result.push(prefix);
+      return;
+    }
+    visit([...prefix, false], remaining, 0);
+    if (remaining > 0 && run < maxRun) visit([...prefix, true], remaining - 1, run + 1);
+  }
+  visit([], count, 0);
+  positionCache.set(key, result);
+  return result;
+}
+
 export function drawWithRules(
   events: SolarEvent[], seed: number, excludeSetIds: string[], rules: EngineRules,
 ): SolarEvent[] {
@@ -34,15 +55,12 @@ export function drawWithRules(
     ]);
     const selectedQuiet = rng.shuffle(quiet).slice(0, MISSION_DAYS - stormCount);
 
-    // Put storms in random gaps around quiet days, with at most two per gap.
-    // This guarantees spacing without an unbounded shuffle-until-valid loop.
-    const gaps: SolarEvent[][] = Array.from({ length: selectedQuiet.length + 1 }, () => []);
-    for (const storm of selectedStorms) {
-      const available = gaps.filter(gap => gap.length < rules.draw.maxConsecutiveStorms);
-      if (available.length === 0) throw new Error('Draw rules cannot space the storm days.');
-      rng.pick(available).push(storm);
-    }
-    const result = gaps.flatMap((gap, i) => i < selectedQuiet.length ? [...gap, selectedQuiet[i]] : gap);
+    const masks = positions(stormCount, rules.draw.maxConsecutiveStorms);
+    if (masks.length === 0) throw new Error('Draw rules cannot space the storm days.');
+    let stormIndex = 0;
+    let quietIndex = 0;
+    const result = rng.pick(masks).map(storm => storm
+      ? selectedStorms[stormIndex++] : selectedQuiet[quietIndex++]);
     if (!excluded.has(eventSetIdOf(result))) return result.map(event => ({ ...event }));
   }
   throw new Error(`Could not draw a new event set after ${rules.draw.maxAttempts} attempts; exclusions exhausted retries.`);
