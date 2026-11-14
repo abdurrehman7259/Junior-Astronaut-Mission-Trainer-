@@ -85,19 +85,21 @@ npm run lint
 npm test             # unit tests
 npm run build
 npm run preview      # serve the production build
-npm run e2e          # Playwright (needs a build)
+npm run e2e          # Playwright: builds, then serves the app on :4174 itself
 ```
 Data and balance scripts (these need network access for NASA; they overwrite files in `public/data/`):
 ```bash
 npm run fetch:donki
 npm run fetch:radlab
 npm run fetch:osdr
+npx tsx scripts/fetch-mars-events.ts   # DONKI CMEs with a modelled Mars impact
+npx tsx scripts/fetch-mars-site.ts     # Jezero Crater and Mars Trek facts
 npm run simulate     # writes reports/balance-report.md
 ```
 
 ## Tests
 - **Unit and integration** (Vitest): `tests/engine`, `tests/scripts`, `tests/functions`, `tests/ui`.
-- **End to end** (Playwright, `e2e/`): a full mission on each site, keyboard-only play, offline play, no sideways scroll at 360, 768, 1024 and 1920 px.
+- **End to end** (Playwright, `e2e/`): a full mission on each site, keyboard-only play, offline play, no sideways scroll at 360, 768, 1024 and 1920 px, and a full mission under the exact `netlify.toml` CSP with no violations.
 - **Privacy guard** (`tests/scripts/privacy.test.ts`): fails if the code adds a tracker or a third-party request.
 - **Balance report** (`reports/balance-report.md`): 1000 simulated missions per strategy. It checks that the game is winnable but not trivial. These are game rules, not real data.
 

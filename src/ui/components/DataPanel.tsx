@@ -31,7 +31,7 @@ export interface BuildSourcesInput {
 
 export const DONKI_URL = 'https://ccmc.gsfc.nasa.gov/tools/DONKI/';
 
-const archived = (iso: string | null | undefined) => `Archived (retrieved ${iso?.slice(0, 10) ?? 'unknown date'})`;
+const archived = (iso: string | null | undefined) => (iso ? `Archived (retrieved ${iso.slice(0, 10)})` : 'Not loaded');
 
 /** Wording follows how many of the pool's storms NASA's model really listed as reaching Mars. */
 function marsUse(events: SolarEvent[] = []): string {

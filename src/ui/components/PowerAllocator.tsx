@@ -152,7 +152,7 @@ function PreviewPanel({ preview, site }: { preview: TurnResult; site: SiteId }) 
         />
       </ul>
       {dose.received > 0 && (
-        <p className="pa-dose">Radiation reaching the crew: {dose.received}</p>
+        <p className="pa-dose">Game dose reaching the crew: {dose.received}</p>
       )}
       {site === 'mars' && <p className="pa-preview-warn">Storms could make this worse.</p>}
       <ul className="pa-explain">

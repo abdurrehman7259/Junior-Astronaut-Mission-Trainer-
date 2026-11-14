@@ -6,11 +6,11 @@ export default defineConfig({
   timeout: 60_000,
   retries: 0,
   reporter: 'list',
-  use: { baseURL: 'http://localhost:4173', trace: 'retain-on-failure' },
+  use: { baseURL: 'http://localhost:4174', trace: 'retain-on-failure' },
   webServer: {
-    command: 'npm run build && npm run preview -- --port 4173 --strictPort',
-    url: 'http://localhost:4173',
-    reuseExistingServer: true,
+    command: 'npm run build && npm run preview -- --port 4174 --strictPort',
+    url: 'http://localhost:4174',
+    reuseExistingServer: false, // always build fresh; 4174 keeps clear of a manual preview on 4173 (A3 C6)
     timeout: 120_000,
   },
   projects: [

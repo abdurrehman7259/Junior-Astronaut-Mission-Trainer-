@@ -5,7 +5,7 @@ Time needed: about 10 minutes to set up and about 3 minutes per build, then the 
 
 Before you start:
 - `main` on GitHub is green. CI runs typecheck, tests and build on every push.
-- You have your api.nasa.gov key ready to type into Netlify. **Never paste it into chat or commit it.**
+- No API key is needed. The live function uses NASA's keyless CCMC DONKI API (D-013), and nothing in the site reads `NASA_API_KEY`. **Never paste a key into chat or commit it.**
 
 ## 1. Create the site (one time)
 1. Go to **https://app.netlify.com** and sign in with **GitHub**.
@@ -21,11 +21,7 @@ Before you start:
    | Publish directory | `dist` |
    | Functions directory | `netlify/functions` |
    If any field differs, don't edit it in the UI. Tell lead agent, because `netlify.toml` is the source of truth.
-6. Click **Add environment variables** → **Add a variable**:
-   - **Key:** `NASA_API_KEY`
-   - **Value:** your api.nasa.gov key, typed here only
-   - **Scopes:** Builds **and** Functions
-   - Click **Create variable**. Skip this step if you have no key: DONKI now uses NASA's keyless CCMC API, and the live feed falls back to archived data.
+6. **Environment variables: skip.** Don't add `NASA_API_KEY`. The deployed function uses NASA's keyless CCMC DONKI API, and neither the build nor the function reads a key. Storing an unused secret is only risk.
 7. Click **Deploy** (Netlify may label it "Deploy moon-base-cadets"). Wait for **Published** (about 2–4 minutes).
 8. Optional: **Project configuration** → **Change project name** → `moon-base-cadets` gives `https://moon-base-cadets.netlify.app`.
 9. Send lead agent the URL.
@@ -47,7 +43,7 @@ Use a **private/incognito window**, with no login.
 | 6 | **Mars** mission, if shipped (3) | It says "sol". "Message from Earth: arrives tomorrow" appears. The report reveals the storm. Jezero Crater and Mars Trek are credited in Data used. |
 | 7 | Reload mid-mission (1) | "Continue mission (Day N)" appears and works. |
 | 8 | Tablet width (1) | DevTools → toggle device toolbar → iPad. Nothing is cut off, and there is no sideways scroll. |
-| 9 | DevTools → **Network** (1) | Every request goes to your netlify.app domain. There are **no third-party domains** (NASA links only open when clicked). |
+| 9 | DevTools → **Network** and **Console** (1) | Every request goes to your netlify.app domain. There are **no third-party domains** (NASA links only open when clicked). The Console shows no "Content Security Policy" errors. |
 | 10 | DevTools → **Application** → Cookies (0.5) | None. Local storage has only `mbc.*` keys. |
 | 11 | Offline (1) | DevTools → Network → Offline → reload is not expected to work. Instead go offline *after* loading and play a day: the game keeps working. |
 

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
 test.setTimeout(120_000);
@@ -127,7 +128,7 @@ test('Privacy: same-origin only, no cookies, mbc. storage', async ({ page, conte
   await playOut(page, 'moon');
   await expectEnd(page);
 
-  const external = urls.filter((u) => !u.startsWith('data:') && !u.startsWith('blob:') && new URL(u).origin !== 'http://localhost:4173');
+  const external = urls.filter((u) => !u.startsWith('data:') && !u.startsWith('blob:') && new URL(u).origin !== 'http://localhost:4174');
   expect(external).toEqual([]);
   expect(await context.cookies()).toHaveLength(0);
   const keys = await page.evaluate(() => Object.keys(localStorage));
@@ -149,3 +150,27 @@ test('Resume after reload', async ({ page }) => {
   await cont.click();
   await expect(page.getByRole('heading', { name: 'Day 3 of 10' })).toBeVisible();
 });
+
+// A3 C4: the deployed CSP (netlify.toml) has no 'unsafe-eval'. Serve the page with that exact
+// header and play a whole mission on each site; the browser must report no CSP violation.
+for (const site of ['moon', 'mars'] as const) {
+  test(`Strict netlify.toml CSP: no violations (${site})`, async ({ page }) => {
+    const csp = /Content-Security-Policy = "([^"]+)"/.exec(readFileSync('netlify.toml', 'utf8'))?.[1];
+    expect(csp).toBeTruthy();
+    await page.route('/', async (route) => {
+      const res = await route.fetch();
+      await route.fulfill({ response: res, headers: { ...res.headers(), 'content-security-policy': csp! } });
+    });
+    await page.addInitScript(() => {
+      (window as unknown as { cspViolations: string[] }).cspViolations = [];
+      document.addEventListener('securitypolicyviolation', (e) =>
+        (window as unknown as { cspViolations: string[] }).cspViolations.push(`${e.violatedDirective} ${e.blockedURI}`),
+      );
+    });
+    await openStart(page);
+    await start(page, site);
+    await playOut(page, site);
+    await expectEnd(page);
+    expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)).toEqual([]);
+  });
+}

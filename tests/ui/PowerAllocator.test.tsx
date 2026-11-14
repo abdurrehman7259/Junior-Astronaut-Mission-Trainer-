@@ -230,7 +230,7 @@ describe('PowerAllocator', () => {
       'Crew health ▼ down −8 (to 72)',
       'Science ▲ up +9 (to 39)',
     ]);
-    expect(screen.getByText('Radiation reaching the crew: 6')).toBeInTheDocument();
+    expect(screen.getByText('Game dose reaching the crew: 6')).toBeInTheDocument();
     for (const s of ['Power sentence.', 'Life sentence.', 'Crew sentence.', 'Science sentence.']) {
       expect(screen.getByText(s)).toBeInTheDocument();
     }
@@ -238,7 +238,7 @@ describe('PowerAllocator', () => {
 
   it('hides the radiation line when nothing reaches the crew', () => {
     setup({ preview: fixture(0) });
-    expect(screen.queryByText(/Radiation reaching the crew/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Game dose reaching the crew/)).not.toBeInTheDocument();
   });
 
   it('shows no preview panel content when preview is null', () => {

@@ -69,7 +69,7 @@ describe('EndScreen', () => {
     ).toBeInTheDocument();
   });
 
-  it('has one timeline row per day, with dates and NASA links only on storm days', () => {
+  it('has one timeline row per day, with dates and a NASA link on every real day (storms and quiet days)', () => {
     render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} />);
     const rows = within(screen.getByRole('list', { name: 'Day by day' })).getAllByRole('listitem');
     expect(rows).toHaveLength(3);
@@ -78,7 +78,7 @@ describe('EndScreen', () => {
     expect(link).toHaveAttribute('href', 'https://example.com/donki/10');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(within(rows[1]!).queryByRole('link')).toBeNull();
+    expect(within(rows[1]!).getByRole('link', { name: /See the NASA record/ })).toBeInTheDocument();
     expect(within(rows[2]!).getByRole('link')).toBeInTheDocument();
     expect(within(rows[0]!).getByText(/Life 4 · Shield 3 · Science 3/)).toBeInTheDocument();
     expect(within(rows[0]!).getByText(/went down by 5/)).toBeInTheDocument();

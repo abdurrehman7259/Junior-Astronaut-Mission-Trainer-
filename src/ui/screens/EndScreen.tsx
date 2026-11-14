@@ -5,7 +5,7 @@ import { dayWordCap } from '../../app/state';
 import { isStubEvent } from '../../app/stub-events';
 import { ScreenHeading } from '../components/ScreenHeading';
 import { Meters } from '../components/Meters';
-import { formatRealDate, KIND_WORDS, SEVERITY_WORDS } from '../components/EventCard';
+import { formatRealDate, kindWordFor, SEVERITY_WORDS } from '../components/EventCard';
 import './EndScreen.css';
 
 export interface EndScreenProps {
@@ -76,18 +76,17 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
         <h2>What really happened</h2>
         <ol className="debrief-list" aria-label={`${Word} by ${SITES[site].dayWord}`}>
           {game.history.map((r) => {
-            const storm = r.event.kind !== 'QUIET';
             const stub = isStubEvent(r.event);
             const { life, shield, science } = r.allocation;
             return (
               <li key={r.day} className="debrief-row">
                 <p className="debrief-title">
                   <strong>{Word} {r.day}</strong>
-                  <span>{KIND_WORDS[r.event.kind]}</span>
+                  <span>{kindWordFor(r.event.kind, SITES[site].dayWord)}</span>
                 </p>
                 <p className="debrief-meta">
                   {formatRealDate(r.event.realDate)}
-                  {stub ? ' (placeholder)' : ''} · {SEVERITY_WORDS[r.event.severity]}
+                  {stub ? ' (placeholder)' : ''} · Game strength: {SEVERITY_WORDS[r.event.severity]}
                 </p>
                 <p className="debrief-meta">
                   Life {life} · Shield {shield} · Science {science}
@@ -95,7 +94,7 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
                 <p className="debrief-meta">
                   <HealthChange delta={r.deltas.crewHealth} />
                 </p>
-                {storm && (
+                {!stub && (
                   <a className="debrief-link" href={r.event.sourceUrl} target="_blank" rel="noopener noreferrer">
                     See the NASA record<span className="visually-hidden"> (opens in a new tab)</span>
                   </a>

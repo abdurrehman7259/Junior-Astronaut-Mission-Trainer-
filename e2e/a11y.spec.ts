@@ -3,6 +3,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 // F9: accessibility and responsive pass (WCAG 2.2 AA basics, NFR-05, NFR-07, NFR-08).
 // Chromium only, desktop project only (the tablet project would repeat the same checks).
 test.setTimeout(180_000);
+// oxlint-disable-next-line no-empty-pattern -- Playwright requires a destructured fixtures argument
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'a11y checks run once, in the desktop project');
 });
