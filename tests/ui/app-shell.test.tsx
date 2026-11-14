@@ -20,6 +20,8 @@ async function playToEnd(user: ReturnType<typeof userEvent.setup>) {
     const btn = screen.queryByRole('button', { name: /Play a balanced day/ });
     if (!btn) break;
     await user.click(btn);
+    // Day report step (plan → report → next day / end).
+    await user.click(await screen.findByRole('button', { name: /Next day|See how the mission went/ }));
   }
   await screen.findByRole('button', { name: 'Play again' });
 }
@@ -93,6 +95,8 @@ describe('reducer', () => {
     let s = reducer(loaded, { type: 'startMission', seed: 1 });
     for (let i = 0; i < 10 && s.screen === 'mission'; i++) {
       s = reducer(s, { type: 'playDay', allocation: { life: 4, shield: 3, science: 3 } });
+      expect(s.screen).toBe('report');
+      s = reducer(s, { type: 'continue' });
     }
     expect(s.screen).toBe('end');
     expect(s.game?.status).not.toBe('playing');

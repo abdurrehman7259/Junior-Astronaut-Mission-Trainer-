@@ -29,7 +29,7 @@ export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadE
   }, [loadEventsFn]);
 
   const { screen, game } = state;
-  const running = screen === 'mission' && game ? game.day : null;
+  const running = (screen === 'mission' || screen === 'report') && game ? (state.lastResult && screen === 'report' ? state.lastResult.day : game.day) : null;
 
   return (
     <>
@@ -41,12 +41,19 @@ export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadE
       >
         {screen === 'loading' && <LoadingScreen />}
         {screen === 'error' && <ErrorScreen />}
-        {screen === 'start' && <StartScreen onStart={() => dispatch({ type: 'startMission', seed: newSeed() })} />}
+        {screen === 'start' && <StartScreen onStart={(crewName) => dispatch({ type: 'startMission', seed: newSeed(), crewName })} />}
         {screen === 'mission' && game && (
           <MissionScreen
             game={game}
             lastResult={state.lastResult}
             onPlayDay={(allocation) => dispatch({ type: 'playDay', allocation })}
+          />
+        )}
+        {screen === 'report' && state.lastResult && (
+          <TemporaryReport
+            day={state.lastResult.day}
+            isFinal={state.lastResult.statusAfter !== 'playing'}
+            onContinue={() => dispatch({ type: 'continue' })}
           />
         )}
         {screen === 'end' && game && (
@@ -61,5 +68,17 @@ export function App({ loadEventsFn = loadEvents }: { loadEventsFn?: typeof loadE
         returnFocusRef={dataButtonRef}
       />
     </>
+  );
+}
+
+/** Stand-in until F4's ResolutionScreen is wired in (same button labels). */
+function TemporaryReport({ day, isFinal, onContinue }: { day: number; isFinal: boolean; onContinue: () => void }) {
+  return (
+    <section className="stack">
+      <h1 tabIndex={-1}>Day {day} report</h1>
+      <button type="button" className="btn btn-primary btn-large" onClick={onContinue}>
+        {isFinal ? 'See how the mission went' : 'Next day'}
+      </button>
+    </section>
   );
 }
