@@ -1,11 +1,9 @@
 /**
- * The one place the UI gets its engine from.
- * Today: the stub. When B2 is accepted, switch to:
- *   import * as real from '../engine';
- *   export const engine: GameEngine = real;
+ * The one place the UI gets its engine from: the real engine (B2, accepted Sat 14 Nov 12:30).
+ * The stub stays in src/app/stub-engine.ts for reference and isolated UI tests.
  */
 import type { GameEngine } from '../shared/engine-api';
-import { stubEngine } from './stub-engine';
+import * as real from '../engine';
 
-export const engine: GameEngine = stubEngine;
-export const ENGINE_IS_STUB = true;
+export const engine: GameEngine = real;
+export const ENGINE_IS_STUB = false;
