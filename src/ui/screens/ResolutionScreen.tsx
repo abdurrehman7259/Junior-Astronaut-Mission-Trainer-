@@ -93,7 +93,7 @@ export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }:
             kidText={isStubEvent(event) ? undefined : kidTextFor(event, site)}
           />
           {event.severity >= 1 && (
-            <p className="res-late">The warning came too late to plan for it. That's life far from Earth!</p>
+            <p className="res-late">In this game, the warning came too late. Far from Earth, crews plan ahead!</p>
           )}
         </>
       ) : (

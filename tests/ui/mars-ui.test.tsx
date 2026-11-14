@@ -187,7 +187,7 @@ describe('ResolutionScreen on Mars', () => {
     expect(screen.getByText('Real event')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /See the NASA record/ })).toBeInTheDocument();
     expect(screen.getByText("NASA's model predicted this storm would reach Mars.")).toBeInTheDocument();
-    expect(screen.getByText("The warning came too late to plan for it. That's life far from Earth!")).toBeInTheDocument();
+    expect(screen.getByText("In this game, the warning came too late. Far from Earth, crews plan ahead!")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Next sol' })).toBeInTheDocument();
   });
 
