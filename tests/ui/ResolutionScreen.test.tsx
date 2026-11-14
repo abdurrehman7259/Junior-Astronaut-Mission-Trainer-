@@ -49,7 +49,7 @@ describe('ResolutionScreen', () => {
     render(<ResolutionScreen result={makeResult()} isFinal={false} onContinue={() => {}} />);
     expect(screen.getByText('Solar flare')).toBeInTheDocument();
     expect(screen.getByText('10 May 2024')).toBeInTheDocument();
-    expect(screen.getByText('Strength: Medium')).toBeInTheDocument();
+    expect(screen.getByText('Game strength: Medium')).toBeInTheDocument();
   });
 
   it('shows all four explanations and before to after numbers', () => {

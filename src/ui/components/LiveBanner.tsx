@@ -33,7 +33,7 @@ export function LiveBanner({ live, retrievedAt, isPlaceholder = false }: Props) 
     const storms = live.data.events.filter((e) => e.kind !== 'QUIET');
     badge = `Live (checked ${formatCheckedTime(live.data.fetchedAt)} UTC)`;
     if (storms.length === 0) {
-      text = 'Live from NASA: the Sun has been calm this week.';
+      text = 'Live from NASA: no big storms logged this week.';
     } else {
       const top = strongest(storms);
       text = `Live from NASA: ${storms.length} solar events in the last 7 days. Strongest: ${KIND_WORDS[top.kind]} on ${formatRealDate(top.realDate)}.`;

@@ -102,7 +102,7 @@ export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }:
           <span aria-hidden="true"> · </span>
           <span>{formatRealDate(event.realDate)}</span>
           <span aria-hidden="true"> · </span>
-          <span>Strength: {SEVERITY_WORDS[event.severity]}</span>
+          <span>Game strength: {SEVERITY_WORDS[event.severity]}</span>
         </p>
       )}
 

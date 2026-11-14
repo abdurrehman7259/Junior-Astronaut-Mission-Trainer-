@@ -83,7 +83,7 @@ export function EventCard({ event, day, kidText, dayWord = 'day' }: EventCardPro
           <dd>{formatRealDate(event.realDate)}</dd>
         </div>
         <div className="event-fact">
-          <dt>Strength</dt>
+          <dt>Game strength</dt>
           <dd className="event-severity">
             <span className="pips" aria-hidden="true">
               {[1, 2, 3].map((n) => (

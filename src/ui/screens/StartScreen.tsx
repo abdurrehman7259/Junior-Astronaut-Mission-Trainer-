@@ -26,7 +26,7 @@ function MoonBaseArt() {
 }
 
 const SITE_BLURB: Record<SiteId, string> = {
-  moon: "Run a base near the Moon's south pole. Mission Control warns you before each storm.",
+  moon: "Run a base near the Moon's south pole. In this game, Mission Control warns you before each storm.",
   mars: 'Run a base in Jezero Crater on Mars. Storm warnings from Earth arrive a sol late.',
 };
 

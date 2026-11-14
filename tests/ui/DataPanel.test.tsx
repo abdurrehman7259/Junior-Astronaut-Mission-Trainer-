@@ -105,7 +105,7 @@ describe('LiveBanner', () => {
   it('shows the calm text with zero events', () => {
     const data = { live: true as const, fetchedAt: '2026-11-14T10:30:00Z', events: [] };
     render(<LiveBanner live={{ status: 'live', data }} retrievedAt={null} />);
-    expect(screen.getByText('Live from NASA: the Sun has been calm this week.')).toBeInTheDocument();
+    expect(screen.getByText('Live from NASA: no big storms logged this week.')).toBeInTheDocument();
   });
 
   it('archived never says "Live from" and never labels itself live', () => {
