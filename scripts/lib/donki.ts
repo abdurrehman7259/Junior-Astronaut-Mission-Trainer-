@@ -55,7 +55,7 @@ export function mapFlare(raw: unknown): SolarEvent | null {
     flareClass,
     severity: SEVERITY_RULES.flare[letter],
     sourceUrl: flare.link,
-    kidText: `An ${flareClass} solar flare ${peakDate ? 'peaked' : 'began'} on ${realDate}.`,
+    kidText: `${'AMX'.includes(letter) ? 'An' : 'A'} ${flareClass} solar flare ${peakDate ? 'peaked' : 'began'} on ${realDate}.`,
   });
 }
 
@@ -82,7 +82,7 @@ export function mapCme(raw: unknown): SolarEvent | null {
     cmeSpeedKms: speed,
     severity,
     sourceUrl: cme.link,
-    kidText: `A coronal mass ejection was measured at ${speed} km/s on ${realDate}.`,
+    kidText: `A coronal mass ejection was measured at ${Math.round(speed)} km/s on ${realDate}.`,
   });
 }
 

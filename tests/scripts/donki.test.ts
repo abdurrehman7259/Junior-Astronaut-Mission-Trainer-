@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DonkiSnapshotSchema, SolarEventSchema } from '../../src/shared/schemas';
 import type { SolarEvent } from '../../src/shared/types';
 import { fetchDonkiRecords, WINDOW } from '../../scripts/fetch-donki';
@@ -23,19 +23,47 @@ afterEach(() => {
 });
 
 describe('fetchDonkiRecords (mocked network only)', () => {
-  it('can explicitly select the current official service without querying the limited gateway', async () => {
+  beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
-    const fetch = vi.fn().mockImplementation(() => Promise.resolve(Response.json([])));
-    vi.stubGlobal('fetch', fetch);
-    await expect(fetchDonkiRecords('SECRET', true)).resolves.toEqual({ FLR: [], CME: [] });
-    expect(fetch).toHaveBeenCalledTimes(26);
-    for (const [url] of fetch.mock.calls) {
-      expect(String(url)).toMatch(/^https:\/\/ccmc\.gsfc\.nasa\.gov\/DONKI-API\/get\//);
-      expect(String(url)).not.toContain('SECRET');
-    }
   });
 
-  it('requests each annual FLR/CME range sequentially and uses the supplied key', async () => {
+  it('defaults to keyless CCMC, covers every date, and limits concurrency to three requests', async () => {
+    let active = 0;
+    let maximumActive = 0;
+    const fetch = vi.fn().mockImplementation(async () => {
+      active++;
+      maximumActive = Math.max(maximumActive, active);
+      await Promise.resolve();
+      active--;
+      return Response.json([]);
+    });
+    vi.stubGlobal('fetch', fetch);
+    await expect(fetchDonkiRecords('SECRET')).resolves.toEqual({ FLR: [], CME: [] });
+    expect(fetch).toHaveBeenCalledTimes(26);
+    expect(maximumActive).toBe(3);
+    const urls = fetch.mock.calls.map((args) => new URL(String(args[0])));
+    expect(urls.every((url) => url.origin === 'https://ccmc.gsfc.nasa.gov' && !url.searchParams.has('api_key'))).toBe(true);
+    for (const kind of ['FLR', 'CME']) {
+      const ranges = urls.filter((url) => url.pathname === `/DONKI-API/get/${kind}`)
+        .sort((a, b) => a.search.localeCompare(b.search));
+      expect(ranges).toHaveLength(13);
+      let next = Date.parse('2024-01-01T00:00:00Z');
+      for (const url of ranges) {
+        const start = Date.parse(`${url.searchParams.get('startDate')}T00:00:00Z`);
+        const end = Date.parse(`${url.searchParams.get('endDate')}T00:00:00Z`);
+        expect(start).toBe(next);
+        expect(end - start).toBeLessThanOrEqual(59 * 86_400_000);
+        next = end + 86_400_000;
+      }
+      expect(new Date(next).toISOString().slice(0, 10)).toBe('2026-01-01');
+    }
+    expect(console.log).toHaveBeenCalledTimes(26);
+    expect(vi.mocked(console.log).mock.calls.flat().join(' ')).not.toContain('SECRET');
+    expect(vi.mocked(console.log).mock.calls[0][0])
+      .toMatch(/^DONKI CCMC FLR 2024-01-01\.\.2024-02-29 \d+ ms records=0 status=ok$/);
+  });
+
+  it('requests annual gateway ranges sequentially only when explicitly selected', async () => {
     let active = false;
     const fetch = vi.fn().mockImplementation(async () => {
       expect(active).toBe(false);
@@ -45,7 +73,7 @@ describe('fetchDonkiRecords (mocked network only)', () => {
       return Response.json([flare()]);
     });
     vi.stubGlobal('fetch', fetch);
-    const result = await fetchDonkiRecords('SECRET');
+    const result = await fetchDonkiRecords('SECRET', { gateway: true });
     expect(fetch).toHaveBeenCalledTimes(4);
     expect(result.FLR).toHaveLength(2);
     expect(result.CME).toHaveLength(2);
@@ -55,69 +83,103 @@ describe('fetchDonkiRecords (mocked network only)', () => {
     expect(urls.every((url) => url.searchParams.get('api_key') === 'SECRET')).toBe(true);
   });
 
-  it('falls back only on 404 and covers every date with non-overlapping chunks of at most 60 days', async () => {
-    const log = vi.spyOn(console, 'log').mockImplementation(() => {});
-    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 404 }))
+  it.each([404, 403, 429, 500, 503])('falls back once on gateway HTTP %i without retrying it', async (status) => {
+    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status }))
       .mockImplementation(() => Promise.resolve(Response.json([])));
     vi.stubGlobal('fetch', fetch);
-    await expect(fetchDonkiRecords('SECRET')).resolves.toEqual({ FLR: [], CME: [] });
+    await expect(fetchDonkiRecords('SECRET', { gateway: true })).resolves.toEqual({ FLR: [], CME: [] });
     expect(fetch).toHaveBeenCalledTimes(27);
     const urls = fetch.mock.calls.slice(1).map((args) => new URL(String(args[0])));
     expect(urls.every((url) => url.origin === 'https://ccmc.gsfc.nasa.gov' && !url.searchParams.has('api_key'))).toBe(true);
-    const flares = urls.filter((url) => url.pathname.endsWith('/FLR'));
-    const cmes = urls.filter((url) => url.pathname.endsWith('/CME'));
-    expect(flares).toHaveLength(13);
-    expect(cmes.map((url) => url.search)).toEqual(flares.map((url) => url.search));
-    let next = Date.parse('2024-01-01T00:00:00Z');
-    for (const url of flares) {
-      const start = Date.parse(`${url.searchParams.get('startDate')}T00:00:00Z`);
-      const end = Date.parse(`${url.searchParams.get('endDate')}T00:00:00Z`);
-      expect(start).toBe(next);
-      expect(end - start).toBeLessThanOrEqual(59 * 86_400_000);
-      next = end + 86_400_000;
-    }
-    expect(new Date(next).toISOString().slice(0, 10)).toBe('2026-01-01');
-    expect(log.mock.calls.flat().join(' ')).not.toContain('SECRET');
+    expect(vi.mocked(console.log).mock.calls.flat().join(' ')).not.toContain('SECRET');
+  });
+
+  it('falls back after one gateway timeout instead of splitting the legacy range', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockImplementationOnce((_url: unknown, init: RequestInit) => new Promise((_resolve, reject) => {
+      init.signal!.addEventListener('abort', () => reject(new Error('api_key=SECRET timeout')), { once: true });
+    })).mockImplementation(() => Promise.resolve(Response.json([])));
+    vi.stubGlobal('fetch', fetch);
+    const pending = fetchDonkiRecords('SECRET', { gateway: true });
+    await vi.advanceTimersByTimeAsync(19_999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(pending).resolves.toEqual({ FLR: [], CME: [] });
+    expect(fetch).toHaveBeenCalledTimes(27);
+    expect(fetch.mock.calls.slice(1).every((args) => new URL(String(args[0])).origin === 'https://ccmc.gsfc.nasa.gov')).toBe(true);
+    expect(vi.mocked(console.log).mock.calls[0][0]).toContain('20000 ms records=unknown status=timeout');
+    expect(vi.mocked(console.log).mock.calls.flat().join(' ')).not.toContain('SECRET');
+  });
+
+  it('restarts the whole window on CCMC after partial gateway success and a network failure', async () => {
+    const fetch = vi.fn().mockResolvedValueOnce(Response.json([{ legacy: true }]))
+      .mockRejectedValueOnce(new TypeError('fetch failed'))
+      .mockImplementation(() => Promise.resolve(Response.json([])));
+    vi.stubGlobal('fetch', fetch);
+    await expect(fetchDonkiRecords('SECRET', { gateway: true })).resolves.toEqual({ FLR: [], CME: [] });
+    expect(fetch).toHaveBeenCalledTimes(28);
+    expect(new URL(String(fetch.mock.calls[2][0])).searchParams.get('startDate')).toBe('2024-01-01');
   });
 
   it('does not turn permission errors or a non-array response into quiet days', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(null, { status: 403 }));
     vi.stubGlobal('fetch', fetch);
     await expect(fetchDonkiRecords('SECRET')).rejects.toThrow('HTTP 403');
-    expect(fetch).toHaveBeenCalledTimes(1);
-    fetch.mockResolvedValue(Response.json({ error: 'not a dataset' }));
+    expect(fetch).toHaveBeenCalledTimes(3);
+    fetch.mockImplementation(() => Promise.resolve(Response.json({ error: 'not a dataset' })));
     await expect(fetchDonkiRecords('SECRET')).rejects.toThrow('did not return a JSON array');
-    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(6);
   });
 
-  it('splits a timed-out range sequentially without losing either half', async () => {
+  it('allows a slow 58-second CME response without splitting or retrying', async () => {
     vi.useFakeTimers();
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    const fetch = vi.fn().mockResolvedValueOnce(new Response(null, { status: 404 }))
-      .mockImplementationOnce((_url: unknown, init: RequestInit) => new Promise((_resolve, reject) => {
-        init.signal!.addEventListener('abort', () => reject(new Error('timeout')), { once: true });
-      }))
-      .mockResolvedValueOnce(Response.json([{ first: true }]))
-      .mockResolvedValueOnce(Response.json([{ second: true }]))
-      .mockImplementation(() => Promise.resolve(Response.json([])));
+    const fetch = vi.fn().mockImplementation((input: URL) => new Promise((resolve) => {
+      setTimeout(() => resolve(Response.json([])), input.pathname.endsWith('/CME') ? 58_000 : 0);
+    }));
     vi.stubGlobal('fetch', fetch);
     const pending = fetchDonkiRecords('SECRET');
-    await vi.advanceTimersByTimeAsync(20_000);
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toEqual({ FLR: [], CME: [] });
+    expect(fetch).toHaveBeenCalledTimes(26);
+    expect(vi.mocked(console.log).mock.calls.filter(([line]) => String(line).includes('CME')))
+      .toHaveLength(13);
+    expect(vi.mocked(console.log).mock.calls.flat().join(' ')).toContain('58000 ms records=0 status=ok');
+  });
+
+  it('splits a CCMC range only after 90 seconds without losing either half', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockImplementation((input: URL, init: RequestInit) => {
+      const range = `${input.searchParams.get('startDate')}..${input.searchParams.get('endDate')}`;
+      if (!input.pathname.endsWith('/FLR')) return Promise.resolve(Response.json([]));
+      if (range === '2024-01-01..2024-02-29') return new Promise((_resolve, reject) => {
+        init.signal!.addEventListener('abort', () => reject(new Error('timeout')), { once: true });
+      });
+      return Promise.resolve(Response.json(range === '2024-01-01..2024-01-30' ? [{ first: true }]
+        : range === '2024-01-31..2024-02-29' ? [{ second: true }] : []));
+    });
+    vi.stubGlobal('fetch', fetch);
+    const pending = fetchDonkiRecords('SECRET');
+    await vi.advanceTimersByTimeAsync(89_999);
+    expect(fetch.mock.calls.filter(([url]) => String(url).includes('startDate=2024-01-31'))).toHaveLength(0);
+    await vi.advanceTimersByTimeAsync(1);
     expect((await pending).FLR).toEqual([{ first: true }, { second: true }]);
-    const urls = fetch.mock.calls.slice(1, 4).map((args) => new URL(String(args[0])));
-    expect(urls.map((url) => [url.searchParams.get('startDate'), url.searchParams.get('endDate')]))
+    expect(fetch).toHaveBeenCalledTimes(28);
+    const halves = fetch.mock.calls.map(([url]) => new URL(String(url)))
+      .filter((url) => url.pathname.endsWith('/FLR') && url.searchParams.get('endDate')! <= '2024-02-29');
+    expect(halves.map((url) => [url.searchParams.get('startDate'), url.searchParams.get('endDate')]))
       .toEqual([['2024-01-01', '2024-02-29'], ['2024-01-01', '2024-01-30'], ['2024-01-31', '2024-02-29']]);
   });
 });
 
 describe('mapFlare', () => {
-  it.each([['X1.1', 3], ['M5.4', 2], ['C2.5', 1], ['A1', 1], ['B2', 1]])(
-    'maps %s to game severity %i', (classType, severity) => {
+  it.each([['X1.1', 3, 'An'], ['M5.4', 2, 'An'], ['C2.5', 1, 'A'], ['A1', 1, 'An'], ['B2', 1, 'A']])(
+    'maps %s to game severity %i with the correct article', (classType, severity, article) => {
       const event = mapFlare(flare(classType));
       expect(event).toMatchObject({ kind: 'FLR', severity, flareClass: classType,
         id: flare().flrID, source: 'DONKI', sourceUrl: link,
         realDate: '2024-05-10', realTime: '2024-05-10T06:27Z' });
       expect(SolarEventSchema.safeParse(event).success).toBe(true);
+      expect(event?.kidText).toBe(`${article} ${classType} solar flare peaked on 2024-05-10.`);
       expect(event!.kidText.split(/\s+/).length).toBeLessThanOrEqual(15);
     },
   );
@@ -155,6 +217,13 @@ describe('mapFlare', () => {
 });
 
 describe('mapCme', () => {
+  it('rounds only the draft speed, preserving the measurement and severity', () => {
+    const event = mapCme(cme(999.6));
+    expect(event).toMatchObject({ cmeSpeedKms: 999.6, severity: 2 });
+    expect(event?.kidText).toBe('A coronal mass ejection was measured at 1000 km/s on 2024-05-10.');
+    expect(event!.kidText.split(/\s+/).length).toBeLessThanOrEqual(15);
+  });
+
   it('prefers the most accurate analysis over the first speed', () => {
     const event = mapCme({ ...cme(), cmeAnalyses: [
       { speed: 300, isMostAccurate: false }, { speed: 1_200, isMostAccurate: true },
@@ -298,6 +367,24 @@ describe('selectEvents', () => {
 });
 
 describe('fetchJson (mocked network only)', () => {
+  it('reports each attempt with duration and record count, excluding retry backoff', async () => {
+    vi.useFakeTimers();
+    const onRequestComplete = vi.fn();
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockImplementationOnce(() => new Promise((resolve) => {
+        setTimeout(() => resolve(Response.json([{}, {}])), 30);
+      })));
+    const pending = fetchJson('https://api.nasa.gov/?api_key=SECRET', { onRequestComplete });
+    await vi.runAllTimersAsync();
+    await expect(pending).resolves.toEqual([{}, {}]);
+    expect(onRequestComplete.mock.calls).toEqual([
+      [{ elapsedMs: 0, recordCount: null, status: 'HTTP 503' }],
+      [{ elapsedMs: 30, recordCount: 2, status: 'ok' }],
+    ]);
+    expect(JSON.stringify(onRequestComplete.mock.calls)).not.toContain('SECRET');
+  });
+
   it('retries transient fetch failures with bounded backoff', async () => {
     vi.useFakeTimers();
     const fetch = vi.fn().mockRejectedValueOnce(new TypeError('fetch failed'))
