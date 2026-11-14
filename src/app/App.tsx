@@ -151,6 +151,7 @@ export function App({
       >
         {screen === 'loading' && <LoadingScreen />}
         {screen === 'error' && <ErrorScreen />}
+        {screen === 'start' && state.notice && <p role="status">{state.notice}</p>}
         {screen === 'start' && (
           <StartScreen
             marsStatus={mars === undefined ? 'loading' : mars ? 'ready' : 'unavailable'}

@@ -40,6 +40,8 @@ export interface AppState {
   /** The same, remembered per site. */
   recentBySite: Partial<Record<SiteId, string[]>>;
   dataPanelOpen: boolean;
+  /** A short, polite message for the start screen (e.g. a campaign has no data). */
+  notice: string | null;
 }
 
 export type Action =
@@ -69,12 +71,21 @@ export const initialState: AppState = {
   recentSetIds: [],
   recentBySite: {},
   dataPanelOpen: false,
+  notice: null,
 };
 
 const RECENT_KEEP = 3;
 
 function begin(state: AppState, seed: number): AppState {
   const site = state.site;
+  if (!state.pools[site]?.length) {
+    // No data for this campaign: go back to the start screen on the Moon if it can be played.
+    if (state.pools.moon?.length) {
+      const notice = `${SITES[site].name} data isn't available right now. Try the Moon!`;
+      return { ...state, screen: 'start', site: 'moon', game: null, lastResult: null, notice };
+    }
+    return { ...state, screen: 'error', game: null, lastResult: null };
+  }
   const recent = state.recentBySite[site] ?? [];
   let set: SolarEvent[];
   try {
@@ -88,6 +99,7 @@ function begin(state: AppState, seed: number): AppState {
   return {
     ...state,
     screen: 'mission',
+    notice: null,
     game,
     lastResult: null,
     allocation: DEFAULT_ALLOCATION,
@@ -116,7 +128,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'loadFailed':
       return { ...state, screen: 'error' };
     case 'resume': {
-      const site = siteOf(action.saved.game);
+      const site = action.saved.site ?? siteOf(action.saved.game);
       return {
         ...state,
         site,

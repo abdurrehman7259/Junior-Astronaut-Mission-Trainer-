@@ -119,3 +119,23 @@ describe('LiveBanner', () => {
     expect(container.textContent).toBe('');
   });
 });
+
+describe('Mars DONKI wording follows marsImpact', () => {
+  const m = (impact: 'listed' | 'game-only'): SolarEvent => ({ ...ev('CME', 2, '2024-03-01'), marsImpact: impact });
+  const useOf = (events: SolarEvent[]) =>
+    buildDataSources({
+      retrievedAt: null,
+      isPlaceholder: false,
+      mars: { retrievedAt: '2026-11-14T08:00:00Z', site: null, events },
+    }).find((s) => s.id === 'donki-mars')!.use;
+
+  it('all listed', () => {
+    expect(useOf([m('listed'), m('listed')])).toBe("Real CMEs that NASA's space-weather model predicted would reach Mars.");
+  });
+  it('mixed', () => {
+    expect(useOf([m('listed'), m('game-only')])).toContain('Some are real storms that, in this game, also reach Mars.');
+  });
+  it('all game-only', () => {
+    expect(useOf([m('game-only')])).toBe('Real storms recorded by NASA. In this game, they also reach Mars.');
+  });
+});

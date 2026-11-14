@@ -80,3 +80,64 @@ describe('save', () => {
     expect(() => clearSave()).not.toThrow();
   });
 });
+
+describe('save consistency', () => {
+  const allocation = { life: 4, shield: 3, science: 3 };
+  /** A real day-1 result and the game after it. */
+  function played() {
+    const base = snapshot();
+    const { state, result } = engine.applyTurn(base.game, allocation);
+    return { base, state, result };
+  }
+
+  it('uses game.site when saved.site is absent, and saved.site when game.site is absent', () => {
+    const s = snapshot();
+    saveGame({ ...s, game: { ...s.game, site: 'mars' } });
+    expect(loadGame()?.site).toBe('mars');
+    const { site: _drop, ...noSite } = s.game;
+    saveGame({ ...s, site: 'mars', game: noSite as typeof s.game });
+    const loaded = loadGame();
+    expect(loaded?.site).toBe('mars');
+    expect(loaded?.game.site).toBe('mars');
+  });
+
+  it('clears a save whose site and game.site disagree', () => {
+    const s = snapshot();
+    saveGame({ ...s, site: 'mars', game: { ...s.game, site: 'moon' } });
+    expect(loadGame()).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('clears a playing day-1 game that carries an unrelated day-10 victory report', () => {
+    const { base, result } = played();
+    saveGame({ ...base, lastResult: { ...result, day: 10, statusAfter: 'won' } });
+    expect(loadGame()).toBeNull();
+    expect(localStorage.getItem(SAVE_KEY)).toBeNull();
+  });
+
+  it('accepts a report screen whose lastResult is the latest history entry', () => {
+    const { base, state, result } = played();
+    saveGame({ ...base, screen: 'report', game: state, lastResult: result });
+    expect(loadGame()).not.toBeNull();
+  });
+
+  it('clears a report save whose lastResult differs from the latest history entry', () => {
+    const { base, state, result } = played();
+    saveGame({ ...base, screen: 'report', game: state, lastResult: { ...result, day: result.day + 1 } });
+    expect(loadGame()).toBeNull();
+  });
+
+  it('clears a playing game whose history length does not match the day', () => {
+    const { base, state } = played();
+    saveGame({ ...base, game: { ...state, history: [] } });
+    expect(loadGame()).toBeNull();
+  });
+
+  it('accepts a mission screen with a null or matching lastResult', () => {
+    const { base, state, result } = played();
+    saveGame({ ...base, game: state, lastResult: null });
+    expect(loadGame()).not.toBeNull();
+    saveGame({ ...base, game: state, lastResult: result });
+    expect(loadGame()).not.toBeNull();
+  });
+});

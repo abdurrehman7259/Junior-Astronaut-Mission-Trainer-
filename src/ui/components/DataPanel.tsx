@@ -1,7 +1,7 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import { formatCheckedTime } from './LiveBanner';
 import type { LiveState } from '../../app/live';
-import type { DoseCalibration, MarsSiteInfo, ScienceFact, Snapshot } from '../../shared/types';
+import type { DoseCalibration, MarsSiteInfo, ScienceFact, Snapshot, SolarEvent } from '../../shared/types';
 import './DataPanel.css';
 
 export interface DataSourceEntry {
@@ -24,12 +24,22 @@ export interface BuildSourcesInput {
   live?: LiveState;
   donkiUrl?: string;
   /** Present when Mars data is loaded (Mars is active or available). */
-  mars?: { retrievedAt: string; site: MarsSiteInfo | null } | null;
+  mars?: { retrievedAt: string; site: MarsSiteInfo | null; events?: SolarEvent[] } | null;
 }
 
 export const DONKI_URL = 'https://ccmc.gsfc.nasa.gov/tools/DONKI/';
 
 const archived = (iso: string | null | undefined) => `Archived (retrieved ${iso?.slice(0, 10) ?? 'unknown date'})`;
+
+/** Wording follows how many of the pool's storms NASA's model really listed as reaching Mars. */
+function marsUse(events: SolarEvent[] = []): string {
+  const gameOnly = events.filter((e) => e.marsImpact === 'game-only').length;
+  if (gameOnly === 0) return "Real CMEs that NASA's space-weather model predicted would reach Mars.";
+  if (gameOnly < events.length) {
+    return "Real CMEs that NASA's space-weather model predicted would reach Mars. Some are real storms that, in this game, also reach Mars.";
+  }
+  return 'Real storms recorded by NASA. In this game, they also reach Mars.';
+}
 
 /**
  * Pure list of data sources for the panel. Append entries here (Mars Trek, Mars DONKI) later.
@@ -52,7 +62,7 @@ export function buildDataSources(input: BuildSourcesInput): DataSourceEntry[] {
     marsEntries.push({
       id: 'donki-mars',
       name: 'NASA DONKI (Mars-impact CMEs)',
-      use: "Real CMEs that NASA's space-weather model predicted would reach Mars.",
+      use: marsUse(mars.events),
       url: input.donkiUrl ?? DONKI_URL,
       status: archived(mars.retrievedAt),
     });
@@ -100,7 +110,7 @@ interface Props {
   isPlaceholder: boolean;
   osdr?: Snapshot<ScienceFact> | null;
   radlab?: DoseCalibration | null;
-  mars?: { retrievedAt: string; site: MarsSiteInfo | null } | null;
+  mars?: { retrievedAt: string; site: MarsSiteInfo | null; events?: SolarEvent[] } | null;
   live?: LiveState;
   /** Element that gets focus back when the panel closes. */
   returnFocusRef: RefObject<HTMLButtonElement | null>;

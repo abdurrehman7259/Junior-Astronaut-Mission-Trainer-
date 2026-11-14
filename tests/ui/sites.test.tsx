@@ -77,8 +77,10 @@ describe('site reducer', () => {
     expect(again.recentBySite.moon).toHaveLength(1);
   });
 
-  it('shows the error screen when Mars has no pool', () => {
-    expect(reducer(withMoon, { type: 'startMission', seed: 1, site: 'mars' }).screen).toBe('error');
+  it('returns to the start screen on the Moon when Mars has no pool', () => {
+    const s = reducer(withMoon, { type: 'startMission', seed: 1, site: 'mars' });
+    expect(s.screen).toBe('start');
+    expect(s.site).toBe('moon');
   });
 });
 
@@ -97,7 +99,8 @@ describe('save and site', () => {
   };
 
   it('round-trips the site', () => {
-    saveGame({ ...base(), site: 'mars' });
+    const b = base();
+    saveGame({ ...b, site: 'mars', game: { ...b.game, site: 'mars' } });
     expect(loadGame()?.site).toBe('mars');
   });
 

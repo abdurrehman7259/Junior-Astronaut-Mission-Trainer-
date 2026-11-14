@@ -34,7 +34,26 @@ const SavedGameSchema = z
   })
   .refine((s) => (s.screen === 'mission' ? s.game.status === 'playing' : s.lastResult !== null), {
     message: 'screen does not match game state',
-  });
+  })
+  .refine((s) => !s.site || !s.game.site || s.site === s.game.site, { message: 'site fields disagree' })
+  .refine(isConsistent, { message: 'day, history and report disagree' });
+
+type Parsed = { game: GameState; screen: 'mission' | 'report'; lastResult: TurnResult | null };
+
+/** Day, history and the shown report must tell one story. */
+function isConsistent(s: Parsed): boolean {
+  const { game, lastResult } = s;
+  const last = game.history.at(-1);
+  if (game.status === 'playing') {
+    if (game.history.length !== game.day - 1) return false;
+  } else if (!last || game.day !== last.day) {
+    return false;
+  }
+  const same = (a: TurnResult | null | undefined, b: TurnResult | undefined) =>
+    !!a && !!b && JSON.stringify(a) === JSON.stringify(b);
+  if (s.screen === 'report') return same(lastResult, last);
+  return lastResult === null || same(lastResult, last);
+}
 
 export function clearSave(): void {
   try {
@@ -66,7 +85,8 @@ export function loadGame(): SavedGame | null {
     const parsed = SavedGameSchema.safeParse(JSON.parse(raw));
     if (parsed.success) {
       const data = parsed.data;
-      return { ...data, site: data.site ?? data.game.site ?? 'moon' } as SavedGame;
+      const site: SiteId = data.game.site ?? data.site ?? 'moon';
+      return { ...data, site, game: { ...data.game, site } } as SavedGame;
     }
   } catch {
     // Invalid JSON: fall through.

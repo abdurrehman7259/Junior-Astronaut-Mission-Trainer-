@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { LiveSpaceWeatherSchema } from '../shared/schemas';
 import type { LiveSpaceWeather } from '../shared/types';
+import { isStubEvent } from './stub-events';
 
 export const LIVE_ENDPOINT = '/.netlify/functions/space-weather';
 export const LIVE_TIMEOUT_MS = 3000;
@@ -18,7 +19,9 @@ export async function fetchLiveSpaceWeather(signal?: AbortSignal): Promise<LiveS
       headers: { Accept: 'application/json' },
     });
     if (!res.ok) return { live: false };
-    return LiveSpaceWeatherSchema.parse(await res.json());
+    const parsed = LiveSpaceWeatherSchema.parse(await res.json());
+    if (parsed.live && parsed.events.some(isStubEvent)) return { live: false };
+    return parsed;
   } catch {
     return { live: false };
   } finally {
