@@ -1,1 +1,97 @@
-:root {}
+/*
+ * Design tokens: night sky over the Moon.
+ * Contrast ratios (WCAG 2.x) are computed; every text pair is >= 4.5:1 (AA).
+ * Format: ratio on --color-bg / --color-surface / --color-surface-2.
+ */
+:root {
+  color-scheme: dark;
+
+  /* Backgrounds and surfaces */
+  --color-bg: #0b1230; /* deep navy */
+  --color-surface: #141c44;
+  --color-surface-2: #1f2a5c;
+  --color-border: #7380c4; /* 4.91 on bg, 4.39 on surface (non-text needs 3:1) */
+
+  /* Text */
+  --color-text: #f1f4ff; /* 16.73 bg / 14.95 surface / 12.39 surface-2 */
+  --color-text-muted: #b9c3ea; /* 10.54 / 9.42 / 7.81 */
+  --color-link: #8fd0ff; /* 11.05 / 9.88 / 8.18 */
+
+  /* Accent (warm amber) */
+  --color-accent: #ffb938; /* 10.71 / 9.57 / 7.93 as text */
+  --color-accent-hover: #ffcb6b;
+  --color-on-accent: #1a1200; /* 10.84 on accent, 12.39 on accent-hover */
+
+  /* The three systems */
+  --color-life: #4fd8c0; /* green-teal: 10.42 / 9.31 / 7.72 */
+  --color-shield: #a3adff; /* blue-violet: 8.73 / 7.80 / 6.46 */
+  --color-science: #ffc94d; /* amber-gold: 11.99 / 10.72 / 8.88 */
+
+  /* Semantic (always paired with a text label, never colour alone) */
+  --color-danger: #ff9a9a; /* 9.04 / 8.08 / 6.70 */
+  --color-warning: #ffd24d; /* 12.75 / 11.39 / 9.44 */
+  --color-ok: #6fe3a0; /* 11.52 / 10.30 / 8.53 */
+  --color-banner-bg: #ffd24d;
+  --color-banner-text: #2b1d00; /* 11.40 on banner-bg */
+  --color-disabled-bg: #3a4372;
+  --color-disabled-text: #c0c7e6; /* 5.64 on disabled-bg */
+
+  /* Focus ring: white on bg 18.37, on surface 16.42 */
+  --focus-ring-color: #ffffff;
+  --focus-ring-width: 4px;
+  --focus-ring-offset: 3px;
+  --focus-ring: var(--focus-ring-width) solid var(--focus-ring-color);
+
+  /* Spacing */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+  --gutter: 16px;
+  --container-max: 1100px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-pill: 999px;
+
+  /* Type */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-size-sm: 0.875rem; /* small print only (tagline, footer) */
+  --font-size-body: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-h2: clamp(1.375rem, 1.1rem + 1.2vw, 1.875rem);
+  --font-size-h1: clamp(1.75rem, 1.3rem + 2.2vw, 2.75rem);
+  --line-height: 1.55;
+  --line-height-tight: 1.2;
+
+  /* Touch */
+  --touch-target: 48px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
+
+  /* Z-index layers */
+  --z-base: 0;
+  --z-header: 10;
+  --z-skip-link: 50;
+  --z-dialog: 100;
+
+  /* Motion */
+  --duration-fast: 120ms;
+  --duration-normal: 250ms;
+  --ease: ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}
