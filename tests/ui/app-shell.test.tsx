@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/app/App';
 import { engine } from '../../src/app/engine';
 import { initialState, reducer, type AppState } from '../../src/app/state';
@@ -8,7 +8,12 @@ import { SAVE_KEY } from '../../src/app/save';
 import { STUB_EVENTS } from '../../src/app/stub-events';
 import type { SolarEvent } from '../../src/shared/types';
 
-beforeEach(() => localStorage.clear());
+beforeEach(() => {
+  localStorage.clear();
+  // Live endpoint unavailable: the banner must fall back to archived.
+  vi.stubGlobal('fetch', () => Promise.resolve(new Response('nope', { status: 404 })));
+});
+afterEach(() => vi.unstubAllGlobals());
 
 const REAL_EVENTS: SolarEvent[] = STUB_EVENTS.map((e) => ({
   ...e,
@@ -198,6 +203,14 @@ describe('reducer', () => {
     expect(reducer(loaded, { type: 'openDataPanel' }).dataPanelOpen).toBe(true);
     expect(reducer(loaded, { type: 'closeDataPanel' }).dataPanelOpen).toBe(false);
     expect(reducer(initialState, { type: 'loadFailed' }).screen).toBe('error');
+  });
+});
+
+describe('live banner in the app', () => {
+  it('shows the archived text (never "Live") when the live endpoint fails', async () => {
+    await setup();
+    expect(await screen.findByText(/Live NASA feed unavailable/)).toBeInTheDocument();
+    expect(screen.queryByText(/Live from/)).not.toBeInTheDocument();
   });
 });
 

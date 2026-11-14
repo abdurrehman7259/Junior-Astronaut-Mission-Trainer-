@@ -1,0 +1,22 @@
+.data-sources {
+  list-style: none;
+  margin: var(--space-4) 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.data-source {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4);
+}
+.data-source h3 {
+  margin: 0 0 var(--space-1);
+}
+.data-source p {
+  margin: var(--space-1) 0;
+}
+.data-source-status {
+  color: var(--color-accent);
+  font-weight: 700;
+}

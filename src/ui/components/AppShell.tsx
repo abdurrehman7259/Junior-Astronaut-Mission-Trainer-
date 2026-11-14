@@ -6,10 +6,12 @@ interface Props {
   isPlaceholder: boolean;
   onOpenData: () => void;
   dataButtonRef: RefObject<HTMLButtonElement | null>;
+  /** Optional strip directly under the header (live banner). */
+  banner?: ReactNode;
   children: ReactNode;
 }
 
-export function AppShell({ day, isPlaceholder, onOpenData, dataButtonRef, children }: Props) {
+export function AppShell({ day, isPlaceholder, onOpenData, dataButtonRef, banner, children }: Props) {
   return (
     <>
       <a className="skip-link" href="#main">
@@ -35,6 +37,7 @@ export function AppShell({ day, isPlaceholder, onOpenData, dataButtonRef, childr
           </div>
         </div>
       </header>
+      {banner}
       {isPlaceholder && (
         <div className="dev-banner" role="status">
           Dev mode: placeholder events, not real data.

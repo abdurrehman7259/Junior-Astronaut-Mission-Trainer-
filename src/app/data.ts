@@ -1,5 +1,5 @@
-import { DonkiSnapshotSchema } from '../shared/schemas';
-import type { SolarEvent } from '../shared/types';
+import { DoseCalibrationSchema, DonkiSnapshotSchema, OsdrSnapshotSchema } from '../shared/schemas';
+import type { DoseCalibration, ScienceFact, Snapshot, SolarEvent } from '../shared/types';
 import { STUB_EVENTS } from './stub-events';
 
 export interface LoadedEvents {
@@ -26,4 +26,28 @@ export async function loadEvents(): Promise<LoadedEvents> {
     }
     throw err;
   }
+}
+
+export interface LoadedExtras {
+  osdr: Snapshot<ScienceFact> | null;
+  radlab: DoseCalibration | null;
+}
+
+async function loadOne<T>(url: string, parse: (json: unknown) => T): Promise<T | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    return parse(await res.json());
+  } catch {
+    return null;
+  }
+}
+
+/** Optional extras (OSDR facts, RadLab note). Each one fails alone to null; the game never depends on them. */
+export async function loadExtras(): Promise<LoadedExtras> {
+  const [osdr, radlab] = await Promise.all([
+    loadOne('/data/osdr-facts.json', (j) => OsdrSnapshotSchema.parse(j)),
+    loadOne('/data/radlab-dose.json', (j) => DoseCalibrationSchema.parse(j)),
+  ]);
+  return { osdr, radlab };
 }
