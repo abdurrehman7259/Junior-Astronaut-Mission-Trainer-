@@ -25,6 +25,26 @@ export class HttpError extends Error {
 
 export class HttpTimeoutError extends Error {}
 
+/** A transient connection failure that exhausted the configured retries. */
+export class HttpNetworkError extends Error {}
+
+const TRANSIENT_NETWORK_CODES = new Set([
+  'ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'UND_ERR_SOCKET',
+  'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT',
+]);
+
+function isTransientNetworkError(error: unknown): boolean {
+  const seen = new Set<object>();
+  let current = error;
+  while (typeof current === 'object' && current !== null && !seen.has(current)) {
+    seen.add(current);
+    if ('message' in current && (current.message === 'fetch failed' || current.message === 'terminated')) return true;
+    if ('code' in current && typeof current.code === 'string' && TRANSIENT_NETWORK_CODES.has(current.code)) return true;
+    current = 'cause' in current ? current.cause : undefined;
+  }
+  return false;
+}
+
 function retryDelay(retryAfter: string | null, attempt: number): number {
   const backoff = 1_000 * 2 ** attempt;
   if (!retryAfter) return backoff;
@@ -68,8 +88,8 @@ export async function fetchJson(url: string | URL, options: HttpOptions = {}): P
     } catch (error) {
       if (controller.signal.aborted) status = 'timeout';
       if (error instanceof HttpError) throw error;
-      if (!controller.signal.aborted && error instanceof TypeError
-        && error.message === 'fetch failed' && attempt < retries) {
+      const transient = isTransientNetworkError(error);
+      if (!controller.signal.aborted && transient && attempt < retries) {
         // Transient socket/connect failures use the same bounded backoff.
         delay = retryDelay(null, attempt);
       } else {
@@ -78,7 +98,8 @@ export async function fetchJson(url: string | URL, options: HttpOptions = {}): P
           ? `request timed out after ${timeoutMs} ms`
           : error instanceof Error ? error.message : String(error);
         const message = redactApiKey(`GET ${safeUrl}: ${detail}`);
-        throw controller.signal.aborted ? new HttpTimeoutError(message) : new Error(message);
+        if (controller.signal.aborted) throw new HttpTimeoutError(message);
+        throw transient ? new HttpNetworkError(message) : new Error(message);
       }
     } finally {
       clearTimeout(timeout);

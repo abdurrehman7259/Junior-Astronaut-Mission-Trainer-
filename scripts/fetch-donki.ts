@@ -4,7 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { DonkiSnapshotSchema } from '../src/shared/schemas';
 import type { Snapshot, SolarEvent } from '../src/shared/types';
 import { findQuietDates, mapCme, mapFlare, selectEvents } from './lib/donki';
-import { fetchJson, HttpTimeoutError, redactApiKey } from './lib/http';
+import { fetchJson, HttpError, HttpNetworkError, HttpTimeoutError, redactApiKey } from './lib/http';
 
 export const WINDOW = { startDate: '2024-01-01', endDate: '2025-12-31' } as const;
 export const SNAPSHOT_NOTES = 'Archived DONKI records: up to 40 strongest severity-3 events (game ranking: X multiplier or CME speed/1000), evenly spaced picks of up to 40 severity-2 and 30 severity-1 events, and 15 dates with no raw FLR or CME records, conservatively excluding all days touched by flare begin/peak/end times. Game-rule severity bands: A/B/C=1, M=2, X=3; CME speeds <500 km/s=1, 500–999 km/s=2, >=1000 km/s=3.';
@@ -16,7 +16,9 @@ const CCMC_CONCURRENCY = 3;
 type RawDonki = { FLR: unknown[]; CME: unknown[] };
 type DateWindow = { startDate: string; endDate: string };
 
-async function fetchRange(base: string, kind: 'FLR' | 'CME', window: DateWindow, apiKey?: string): Promise<unknown[]> {
+async function fetchRange(
+  base: string, kind: 'FLR' | 'CME', window: DateWindow, apiKey?: string, canSplit = true,
+): Promise<unknown[]> {
   const url = new URL(`${base}/${kind}`);
   url.searchParams.set('startDate', window.startDate);
   url.searchParams.set('endDate', window.endDate);
@@ -34,17 +36,18 @@ async function fetchRange(base: string, kind: 'FLR' | 'CME', window: DateWindow,
   } catch (error) {
     const start = Date.parse(`${window.startDate}T00:00:00Z`);
     const end = Date.parse(`${window.endDate}T00:00:00Z`);
-    // Split slow CCMC responses without dropping,
-    // overlapping or silently treating any failed range as event-free.
-    if (base !== CCMC_BASE || !(error instanceof HttpTimeoutError) || start >= end) throw error;
+    const retryable = error instanceof HttpTimeoutError || error instanceof HttpNetworkError
+      || (error instanceof HttpError && (error.status === 429 || (error.status >= 500 && error.status <= 599)));
+    // Split a slow or exhausted CCMC window once, keeping both halves mandatory.
+    if (base !== CCMC_BASE || !canSplit || !retryable || start >= end) throw error;
     const dayMs = 86_400_000;
     const middle = start + Math.floor((end - start) / dayMs / 2) * dayMs;
     const first = await fetchRange(base, kind, {
       startDate: window.startDate, endDate: new Date(middle).toISOString().slice(0, 10),
-    }, apiKey);
+    }, apiKey, false);
     const second = await fetchRange(base, kind, {
       startDate: new Date(middle + dayMs).toISOString().slice(0, 10), endDate: window.endDate,
-    }, apiKey);
+    }, apiKey, false);
     return [...first, ...second];
   }
   // An error object or empty body must not be mistaken for an event-free range.

@@ -3,7 +3,7 @@ import { DonkiSnapshotSchema, SolarEventSchema } from '../../src/shared/schemas'
 import type { SolarEvent } from '../../src/shared/types';
 import { fetchDonkiRecords, WINDOW } from '../../scripts/fetch-donki';
 import { findQuietDates, mapCme, mapFlare, selectEvents } from '../../scripts/lib/donki';
-import { fetchJson, redactApiKey } from '../../scripts/lib/http';
+import { fetchJson, HttpNetworkError, redactApiKey } from '../../scripts/lib/http';
 
 const link = 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/FLR/123';
 const flare = (classType = 'X1.1') => ({
@@ -169,6 +169,58 @@ describe('fetchDonkiRecords (mocked network only)', () => {
     expect(halves.map((url) => [url.searchParams.get('startDate'), url.searchParams.get('endDate')]))
       .toEqual([['2024-01-01', '2024-02-29'], ['2024-01-01', '2024-01-30'], ['2024-01-31', '2024-02-29']]);
   });
+
+  it.each(['connection', 'HTTP 503', 'HTTP 429'])('splits a CCMC window once after exhausting retries for %s', async (failure) => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockImplementation((input: URL) => {
+      const range = `${input.searchParams.get('startDate')}..${input.searchParams.get('endDate')}`;
+      if (!input.pathname.endsWith('/CME')) return Promise.resolve(Response.json([]));
+      if (range === '2024-01-01..2024-02-29') {
+        return failure === 'connection' ? Promise.reject(new TypeError('terminated'))
+          : Promise.resolve(new Response(null, { status: failure === 'HTTP 503' ? 503 : 429 }));
+      }
+      return Promise.resolve(Response.json(range === '2024-01-01..2024-01-30' ? [{ first: true }]
+        : range === '2024-01-31..2024-02-29' ? [{ second: true }] : []));
+    });
+    vi.stubGlobal('fetch', fetch);
+    const pending = fetchDonkiRecords('SECRET');
+    await vi.advanceTimersByTimeAsync(14_999);
+    const firstWindowCalls = () => fetch.mock.calls.map(([url]) => new URL(String(url)))
+      .filter((url) => url.pathname.endsWith('/CME') && url.searchParams.get('endDate')! <= '2024-02-29');
+    expect(firstWindowCalls()).toHaveLength(4);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await pending).CME).toEqual([{ first: true }, { second: true }]);
+    expect(firstWindowCalls().map((url) => [url.searchParams.get('startDate'), url.searchParams.get('endDate')]))
+      .toEqual([
+        ...Array.from({ length: 5 }, () => ['2024-01-01', '2024-02-29']),
+        ['2024-01-01', '2024-01-30'], ['2024-01-31', '2024-02-29'],
+      ]);
+    expect(fetch).toHaveBeenCalledTimes(32);
+  });
+
+  it.each(['2024-01-01..2024-01-30', '2024-01-31..2024-02-29'])(
+    'throws when half %s also exhausts retries, without splitting it again', async (failedHalf) => {
+      vi.useFakeTimers();
+      const fetch = vi.fn().mockImplementation((input: URL) => {
+        const range = `${input.searchParams.get('startDate')}..${input.searchParams.get('endDate')}`;
+        if (input.pathname.endsWith('/CME') && (range === '2024-01-01..2024-02-29' || range === failedHalf)) {
+          return Promise.reject(new TypeError('terminated'));
+        }
+        return Promise.resolve(Response.json([{ retainedOnlyIfComplete: true }]));
+      });
+      vi.stubGlobal('fetch', fetch);
+      const assertion = expect(fetchDonkiRecords('SECRET')).rejects.toThrow('terminated');
+      await vi.runAllTimersAsync();
+      await assertion;
+      const ranges = fetch.mock.calls.map(([url]) => new URL(String(url)))
+        .filter((url) => url.pathname.endsWith('/CME') && url.searchParams.get('endDate')! <= '2024-02-29')
+        .map((url) => `${url.searchParams.get('startDate')}..${url.searchParams.get('endDate')}`);
+      expect(ranges.filter((range) => range === '2024-01-01..2024-02-29')).toHaveLength(5);
+      expect(ranges.filter((range) => range === failedHalf)).toHaveLength(5);
+      expect(ranges.every((range) => ['2024-01-01..2024-02-29', '2024-01-01..2024-01-30',
+        '2024-01-31..2024-02-29'].includes(range))).toBe(true);
+    },
+  );
 });
 
 describe('mapFlare', () => {
@@ -396,6 +448,58 @@ describe('fetchJson (mocked network only)', () => {
     await vi.advanceTimersByTimeAsync(1);
     await expect(pending).resolves.toEqual([]);
     expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it.each([
+    ['terminated', new TypeError('terminated')] as const,
+    ...['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'EPIPE', 'UND_ERR_SOCKET',
+      'UND_ERR_CONNECT_TIMEOUT', 'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_BODY_TIMEOUT']
+      .map((code) => [code, new TypeError('body failed', {
+        cause: new Error('nested transport error', { cause: { code } }),
+      })] as const),
+  ])('retries a body failure with %s and then succeeds', async (_label, error) => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockResolvedValueOnce({ ok: true, json: () => Promise.reject(error) })
+      .mockResolvedValueOnce(Response.json([{ recovered: true }]));
+    vi.stubGlobal('fetch', fetch);
+    const pending = fetchJson('https://example.com');
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    await expect(pending).resolves.toEqual([{ recovered: true }]);
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a non-transient TypeError, even with a cyclic cause chain', async () => {
+    const failure = new TypeError('invalid request api_key=SECRET');
+    failure.cause = failure;
+    const fetch = vi.fn().mockRejectedValue(failure);
+    vi.stubGlobal('fetch', fetch);
+    const error = await fetchJson('https://example.com/?api_key=SECRET').catch((e: unknown) => e);
+    expect(String(error)).toContain('invalid request api_key=***');
+    expect(String(error)).not.toContain('SECRET');
+    expect(error).not.toHaveProperty('cause');
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('bounds network retries to 1, 2, 4, 8 seconds and redacts the exhausted error', async () => {
+    vi.useFakeTimers();
+    const fetch = vi.fn().mockRejectedValue(new TypeError('body failed api_key=SECRET', {
+      cause: new Error('nested api_key=SECRET', { cause: { code: 'UND_ERR_SOCKET' } }),
+    }));
+    vi.stubGlobal('fetch', fetch);
+    const pending = fetchJson('https://example.com/?api_key=SECRET').catch((e: unknown) => e);
+    for (const [index, delay] of [1_000, 2_000, 4_000, 8_000].entries()) {
+      await vi.advanceTimersByTimeAsync(delay - 1);
+      expect(fetch).toHaveBeenCalledTimes(index + 1);
+      await vi.advanceTimersByTimeAsync(1);
+    }
+    const error = await pending;
+    expect(error).toBeInstanceOf(HttpNetworkError);
+    expect(String(error)).toContain('body failed api_key=***');
+    expect(String(error)).not.toContain('SECRET');
+    expect(error).not.toHaveProperty('cause');
+    expect(fetch).toHaveBeenCalledTimes(5);
   });
 
   it('redacts credentials in upstream exceptions and does not preserve a secret cause', async () => {
