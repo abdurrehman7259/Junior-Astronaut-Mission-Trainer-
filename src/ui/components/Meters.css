@@ -1,0 +1,132 @@
+.meters {
+  container-type: inline-size;
+  width: 100%;
+}
+.meters-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+}
+@container (min-width: 28rem) {
+  .meters-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.meter {
+  --meter-color: var(--color-accent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-2);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.meter-power {
+  --meter-color: var(--color-accent);
+}
+.meter-life {
+  --meter-color: var(--color-life);
+}
+.meter-crew {
+  --meter-color: var(--color-ok);
+}
+.meter-science {
+  --meter-color: var(--color-science);
+}
+.meter.is-low {
+  --meter-color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.meter-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.meter-icon {
+  display: inline-flex;
+  color: var(--meter-color);
+}
+.meter-label {
+  font-weight: 700;
+  color: var(--color-text);
+  margin-right: auto;
+}
+
+.meter-body {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.meter-number {
+  min-width: 2.5ch;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--meter-color);
+}
+.meter-track {
+  flex: 1;
+  height: 16px;
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  background: var(--meter-color);
+  border-radius: var(--radius-pill);
+  transition: width var(--duration-normal) var(--ease);
+}
+/* Low meters get stripes as well as a colour change, plus the text tag below. */
+.is-low .meter-fill {
+  background: repeating-linear-gradient(-45deg, var(--color-danger) 0 6px, var(--color-bg) 6px 9px);
+}
+
+.meter-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  margin: 0;
+  padding: var(--space-1) var(--space-3);
+  font-weight: 800;
+  color: var(--color-danger);
+  background: var(--color-bg);
+  border: 2px solid var(--color-danger);
+  border-radius: var(--radius-pill);
+}
+.is-critical .meter-tag {
+  color: var(--color-bg);
+  background: var(--color-danger);
+}
+
+.delta-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+.delta-up {
+  color: var(--color-ok);
+}
+.delta-down {
+  color: var(--color-danger);
+}
+.delta-same {
+  color: var(--color-text-muted);
+}

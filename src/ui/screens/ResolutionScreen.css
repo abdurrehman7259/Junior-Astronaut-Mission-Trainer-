@@ -1,0 +1,130 @@
+.resolution {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-4);
+  width: 100%;
+  max-width: 48rem;
+}
+.resolution h1 {
+  margin: 0;
+}
+.res-recap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-muted);
+}
+.res-recap-kind {
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.res-card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.res-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.res-row {
+  --res-color: var(--color-accent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+.res-row:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.res-power {
+  --res-color: var(--color-accent);
+}
+.res-life {
+  --res-color: var(--color-life);
+}
+.res-crew {
+  --res-color: var(--color-ok);
+}
+.res-science {
+  --res-color: var(--color-science);
+}
+.res-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.res-icon {
+  display: inline-flex;
+  color: var(--res-color);
+}
+.res-label {
+  font-weight: 700;
+  margin-right: auto;
+}
+.res-arrow {
+  font-weight: 800;
+}
+.res-up {
+  color: var(--color-ok);
+}
+.res-down {
+  color: var(--color-danger);
+}
+.res-same {
+  color: var(--color-text-muted);
+}
+.res-numbers {
+  font-size: var(--font-size-lg);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.res-explain {
+  margin: 0;
+  color: var(--color-text);
+}
+
+.res-dose {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.res-dose-icon {
+  flex: none;
+  color: var(--color-warning);
+}
+.res-game-note {
+  padding: 0 var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+}
+
+.res-continue {
+  align-self: flex-start;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .res-continue {
+    align-self: stretch;
+    padding-inline: var(--space-4);
+  }
+}
