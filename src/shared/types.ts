@@ -1,5 +1,5 @@
 /**
- * Outpost Junior: shared contracts.
+ * Moon Base Cadets: shared contracts.
  *
  *
  * Need a change? Ask under OPEN ISSUES in your result file.

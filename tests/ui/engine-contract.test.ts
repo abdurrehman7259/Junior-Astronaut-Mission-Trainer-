@@ -16,11 +16,13 @@ function newGame(seed = 42) {
 }
 
 describe('engine contract', () => {
-  it('drawEventSet gives 10 unique events with at least 3 real ones', () => {
+  it('drawEventSet gives 10 unique events with 3-5 real ones', () => {
     const set = engine.drawEventSet(STUB_EVENTS, 7, []);
     expect(set).toHaveLength(MISSION_DAYS);
     expect(new Set(set.map((e) => e.id)).size).toBe(MISSION_DAYS);
-    expect(set.filter((e) => e.kind !== 'QUIET').length).toBeGreaterThanOrEqual(3);
+    const real = set.filter((e) => e.kind !== 'QUIET').length;
+    expect(real).toBeGreaterThanOrEqual(3);
+    expect(real).toBeLessThanOrEqual(5);
     expect(set.some((e) => e.severity >= 2)).toBe(true);
   });
 

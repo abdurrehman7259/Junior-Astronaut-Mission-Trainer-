@@ -40,7 +40,7 @@ export interface GameEngine {
 
   /**
    * Pick MISSION_DAYS events from the snapshot pool, deterministically from `seed`.
-   * - At least 3 are real FLR or CME events (US-04); QUIET days fill the rest of the mix.
+   * - Between 3 and 5 (inclusive) are real FLR or CME events (US-04); the rest are real QUIET days.
    * - At least one has severity >= 2.
    * - No event id appears twice.
    * - eventSetIdOf(result) is not in excludeSetIds (retry with a derived seed; FR-10).

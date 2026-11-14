@@ -1,6 +1,6 @@
 # References
 
-Every third-party library, font, icon, sound and dataset used by Outpost Junior.
+Every third-party library, font, icon, sound and dataset used by Moon Base Cadets.
 
 ## NASA data and services
 

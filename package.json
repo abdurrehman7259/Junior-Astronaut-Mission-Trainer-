@@ -1,9 +1,9 @@
 {
-  "name": "outpost-junior",
+  "name": "moon-base-cadets",
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Outpost Junior: a kids' Moon outpost game driven by real NASA DONKI space-weather events (NASA Space Apps Challenge 2026).",
+  "description": "Moon Base Cadets: a kids' Moon outpost game driven by real NASA DONKI space-weather events (NASA Space Apps Challenge 2026).",
   "license": "MIT",
   "scripts": {
     "dev": "vite",
