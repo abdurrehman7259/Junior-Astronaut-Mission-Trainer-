@@ -10,7 +10,7 @@ export interface FactDraft { id: string; topic: ScienceTopic; text: string; evid
 export const FACT_DRAFTS: readonly FactDraft[] = [
   {
     id: 'OSD-342', topic: 'bone',
-    text: 'Scientists tested ways to protect muscle and bone in mice sent to the International Space Station.',
+    text: 'Some mice went to the International Space Station. Scientists tested ways to protect their muscles and bones.',
     evidence: 'Here, we used both genetic and pharmacological approaches to investigate the effect of targeting MSTN/activin A signaling in mice that were sent to the International Space Station.',
   },
   {
@@ -20,12 +20,12 @@ export const FACT_DRAFTS: readonly FactDraft[] = [
   },
   {
     id: 'OSD-21', topic: 'muscle',
-    text: 'Scientists compared muscle gene activity in mice that flew on a space shuttle with mice that stayed on Earth.',
+    text: 'Some mice flew on a space shuttle. Scientists compared their muscle gene activity with mice on Earth.',
     evidence: 'To identify changes in gene expression that may underlie these adaptations, microarray expression analysis was performed on gastrocnemius from mice flown on the STS-108 shuttle flight (11 days, 19 hours) versus mice maintained on earth for the same period.',
   },
   {
     id: 'OSD-326', topic: 'muscle',
-    text: 'Scientists compared genes and chemicals in thigh muscles from mice in space and mice on Earth.',
+    text: 'Some mice lived in space, and some stayed on Earth. Scientists compared genes and chemicals in their thigh muscles.',
     evidence: 'Under the Rodent Research Program of NASA, we assayed the genomic and metabolomics perturbations in the quadriceps of C57BL/6J male mice that lived on the spaceflight (FLT) or at Ground Control (CTR) for approximately four weeks.',
   },
   {

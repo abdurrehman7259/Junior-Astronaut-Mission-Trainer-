@@ -1,4 +1,5 @@
 // B5 OSDR facts: mocked tests only (no network). (D-020).
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkStudyPage, fetchOsdrSnapshot } from '../../scripts/fetch-osdr';
 import {
@@ -40,6 +41,14 @@ describe('OSDR helpers', () => {
     expect(() => parseSearchPage({ hits: { total: 1, hits: [{ _source: { Accession: 'OSD-1' } }] } })).toThrow('Malformed');
   });
 
+  it('every sentence in drafts and archived facts is under 15 words', () => {
+    const snapshot = JSON.parse(readFileSync('public/data/osdr-facts.json', 'utf8')) as { items: { text: string }[] };
+    const texts = [...FACT_DRAFTS.map((draft) => draft.text), ...snapshot.items.map((item) => item.text)];
+    for (const text of texts) {
+      const sentences = text.split(/[.!?]/).map((sentence) => sentence.trim()).filter(Boolean);
+      for (const sentence of sentences) expect(wordCount(sentence)).toBeLessThan(15);
+    }
+  });
   it('every editorial draft is 25 words or fewer and has evidence', () => {
     for (const d of FACT_DRAFTS) {
       expect(wordCount(d.text)).toBeLessThanOrEqual(25);

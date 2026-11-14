@@ -6,21 +6,21 @@
   "items": [
     {
       "id": "OSD-21",
-      "text": "Scientists compared muscle gene activity in mice that flew on a space shuttle with mice that stayed on Earth.",
+      "text": "Some mice flew on a space shuttle. Scientists compared their muscle gene activity with mice on Earth.",
       "studyTitle": "Effects of spaceflight on murine skeletal muscle gene expression",
       "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-21",
       "topic": "muscle"
     },
     {
       "id": "OSD-326",
-      "text": "Scientists compared genes and chemicals in thigh muscles from mice in space and mice on Earth.",
+      "text": "Some mice lived in space, and some stayed on Earth. Scientists compared genes and chemicals in their thigh muscles.",
       "studyTitle": "Gene-metabolite network linked to inhibited bioenergetics in association with spaceflight induced loss of quadriceps muscle",
       "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-326",
       "topic": "muscle"
     },
     {
       "id": "OSD-342",
-      "text": "Scientists tested ways to protect muscle and bone in mice sent to the International Space Station.",
+      "text": "Some mice went to the International Space Station. Scientists tested ways to protect their muscles and bones.",
       "studyTitle": "Targeting myostatin/activin A protects against skeletal muscle and bone loss during spaceflight [plasma proteomics]",
       "osdrUrl": "https://osdr.nasa.gov/bio/repo/data/studies/OSD-342",
       "topic": "bone"

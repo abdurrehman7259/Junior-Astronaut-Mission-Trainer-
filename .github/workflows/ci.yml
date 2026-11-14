@@ -33,3 +33,5 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Privacy guard on built output
+        run: npx vitest run tests/scripts/privacy.test.ts
