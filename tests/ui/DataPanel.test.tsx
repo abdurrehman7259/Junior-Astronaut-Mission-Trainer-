@@ -76,7 +76,9 @@ describe('DataPanel', () => {
     const dlg = screen.getByRole('dialog', { name: 'Data used' });
     expect(within(dlg).getByText(/Everything real in this game comes from NASA/)).toBeInTheDocument();
     const links = within(dlg).getAllByRole('link');
-    expect(links).toHaveLength(3);
+    // 3 source links + the citation for the RadLab note (fact-check #15).
+    expect(links).toHaveLength(4);
+    expect(within(dlg).getByRole('link', { name: /NASA Apollo radiation page/ })).toHaveAttribute('href', expect.stringContaining('nasa.gov'));
     for (const l of links) {
       expect(l).toHaveAttribute('target', '_blank');
       expect(l).toHaveAttribute('rel', 'noopener noreferrer');

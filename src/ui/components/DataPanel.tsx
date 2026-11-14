@@ -10,6 +10,8 @@ export interface DataSourceEntry {
   /** One kid-friendly sentence: what the game uses it for. */
   use: string;
   url?: string;
+  /** Optional citation for the `use` sentence itself (fact-check, docs/FACT_CHECK.md #15). */
+  citation?: { label: string; url: string };
   /** Status label, e.g. "Archived (retrieved 2026-11-14)". */
   status: string;
   /** Optional extra line (e.g. the live feed check time). */
@@ -91,7 +93,12 @@ export function buildDataSources(input: BuildSourcesInput): DataSourceEntry[] {
       id: 'radlab',
       name: 'NASA RadLab (ISS radiation)',
       use: "The space station is inside Earth's magnetic field. The Moon's surface is not, so radiation there is higher.",
-      url: radlab?.sourceUrl ?? 'https://visualization.osdr.nasa.gov/radlab/',
+      // RadLab home page (the snapshot's raw API query doesn't support the note); the note gets its own citation.
+      url: 'https://visualization.osdr.nasa.gov/radlab/',
+      citation: {
+        label: 'Source: NASA Apollo radiation page',
+        url: 'https://www.nasa.gov/wp-content/uploads/static/history/alsj/WOTM/WOTM-Radiation.html',
+      },
       status: radlab ? archived(radlab.retrievedAt) : 'Not loaded',
     },
     {
@@ -148,7 +155,7 @@ export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, rad
       }}
     >
       <h2 id="data-panel-title">Data used</h2>
-      <p>Everything real in this game comes from NASA. Game numbers are game rules.</p>
+      <p>Everything real in this game comes from NASA and NOAA. Game numbers are game rules.</p>
       <ul className="data-sources">
         {sources.map((s) => (
           <li key={s.id} className="data-source">
@@ -158,6 +165,14 @@ export function DataPanel({ open, onClose, retrievedAt, isPlaceholder, osdr, rad
               <p>
                 <a href={s.url} target="_blank" rel="noopener noreferrer">
                   Visit {s.name.split(' (')[0]}
+                  <span className="visually-hidden"> (opens in a new tab)</span>
+                </a>
+              </p>
+            )}
+            {s.citation && (
+              <p>
+                <a href={s.citation.url} target="_blank" rel="noopener noreferrer">
+                  {s.citation.label}
                   <span className="visually-hidden"> (opens in a new tab)</span>
                 </a>
               </p>
