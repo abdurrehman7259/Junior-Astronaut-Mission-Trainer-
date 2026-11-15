@@ -4,7 +4,7 @@
 
 A browser game for kids aged 7–12, built for the NASA Space Apps Challenge 2026 challenge
 "Build a Junior Astronaut Mission Trainer". You run a base for 10 mission days and split 10 power units a day
-between Life support, Shielding and Science, while **real solar flares and CMEs from NASA's DONKI database** hit the base.
+between Air & food, Shields and Science, while **real solar flares and CMEs from NASA's DONKI database** hit the base.
 The game has two sites: a Moon base and a Mars base.
 
 Live game: `<LIVE_URL>` (placeholder; the repo is private and the game is not deployed yet).
@@ -19,21 +19,21 @@ Live game: `<LIVE_URL>` (placeholder; the repo is private and the game is not de
 The game concept came from the team. AI tools were used for implementation only, under the team's direction.
 
 ## How to play
-1. Type a crew name (optional). It stays on your device.
-2. Choose a base: **Moon** (south pole) or **Mars** (Jezero Crater).
-3. A mission lasts 10 days (Moon) or 10 sols (Mars). A sol is one Mars day.
-4. Each day, split **10 power units** between **Life support**, **Shielding** and **Science**.
-5. Moon: an event card shows the day's real NASA event *before* you allocate. It has a "Real event" or "Real quiet day" badge, the real date and a link to the NASA record.
-6. Mars: the card is a "Message from Earth" that says "Arrives tomorrow". The warning arrives one sol late. **This delay is a game rule.** Real radio messages take minutes, not a sol.
-7. Press **Run day N** (Mars: **Run sol N**). The **day report** shows each meter before and after, with an arrow and a sentence on why.
-8. After day 10, the **debrief** lists what really happened each day with NASA links, plus one real NASA science study.
-9. Play again. You get a new set of real events.
+**Goal:** keep your crew safe for 10 days (on Mars, 10 sols) and earn science points. The goal is always shown in the header.
+
+1. Choose a base: **Moon** (south pole, easier: you get a warning before each storm) or **Mars** (Jezero Crater, harder: storm warnings arrive one sol late). Type a crew name if you like. It stays on your device.
+2. The first time you play, a 3-card **How to play** intro explains the goal, the power and the storms. Reopen it any time with the **How to play** button.
+3. Each day has three numbered steps. **1. Check today's space weather.** Moon: the event card shows the day's real NASA event *before* you plan, with a "Real storm from NASA" or "Calm day (real NASA date)" badge, the storm size, the real date and a link to the NASA record. Mars: a "Message from Earth" says today's storm news comes after you plan. **This delay is a game rule.** Real radio messages take minutes, not a sol.
+4. **2. Share your 10 power** between **Air & food**, **Shields** and **Science**. Each day starts with all 10 unshared, so you always choose. Quick plans (Balanced, Storm-ready, Science day) are optional. The meters show ▲/▼ what your plan would do. Shields and science use the **Battery**, which recharges a little each day.
+5. **3. Start the day** (Mars: **Start sol N**). The button works once all 10 power is shared. The **day report** opens with one verdict, such as "Great call! Your shields stopped the storm." It then gives one short line per meter.
+6. After day 10, the **debrief** gives the outcome and why, your science score, what you learned, what really happened each day with NASA links, and one real NASA science study.
+7. Play again. You get a new set of real events.
 
 ## What is real and what is a game rule
 | Real (each has a source link in the game) | Game rule (labelled as such) |
 |---|---|
 | The date, type and class or speed of each flare or CME | Power units, the three meters, science points |
-| Quiet days with no big flare or CME in NASA's storm log | "Game strength" of an event, "game dose", shield maths |
+| Quiet days with no big flare or CME in NASA's storm log | The storm size (Small, Medium, Big), radiation numbers, shield maths |
 | Which CMEs NASA's model predicted would reach Mars | The Moon warning before each storm; the one-sol-late Mars warning |
 | Jezero Crater, sol length, Earth to Mars radio time (4 to 24 min one way) | Mission length, event draw, balance |
 | Six OSDR space biology studies, described not "solved" | Meter changes and recharge values |

@@ -38,7 +38,7 @@ Use a **private/incognito window**, with no login.
 | 1 | Open the URL (1) | The start screen appears in under 3 s. There is no "Dev mode" banner and no login, cookie banner or pop-up. |
 | 2 | **Data used** button (1) | DONKI shows "Archived (retrieved 2026-11-14)". OSDR and RadLab are listed. No dose number is shown. |
 | 3 | Live banner (1) | It says either "Live from NASA…" or "Live NASA feed unavailable… archived". Never "Live" with archived data. |
-| 4 | Start a **Moon** mission (3) | Day 1 shows a "Real event" or "Real quiet day" badge, a real date and a "See the NASA record" link that opens a ccmc.gsfc.nasa.gov page. |
+| 4 | Start a **Moon** mission (3) | The "How to play" intro opens (Skip it). Day 1 shows a "Real storm from NASA" or "Calm day (real NASA date)" badge, a real date and a "See the NASA record" link that opens a ccmc.gsfc.nasa.gov page. |
 | 5 | Play all 10 days (4) | Each day has a report with arrows and a sentence per meter. The end screen shows a timeline with NASA links and one "Real NASA science" study. |
 | 6 | **Mars** mission, if shipped (3) | It says "sol". "Message from Earth: arrives tomorrow" appears. The report reveals the storm. Jezero Crater and Mars Trek are credited in Data used. |
 | 7 | Reload mid-mission (1) | "Continue mission (Day N)" appears and works. |
