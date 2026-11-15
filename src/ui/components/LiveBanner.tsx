@@ -1,6 +1,7 @@
 import type { LiveState } from '../../app/live';
 import type { SolarEvent } from '../../shared/types';
 import { formatRealDate, KIND_WORDS } from './EventCard';
+import { LIVE } from '../content/copy';
 import './LiveBanner.css';
 
 interface Props {
@@ -41,10 +42,10 @@ export function LiveBanner({ live, retrievedAt, isPlaceholder = false }: Props) 
   } else if (live.status === 'archived') {
     const date = retrievedAt?.slice(0, 10);
     if (isPlaceholder || !date) {
-      text = 'Live NASA feed unavailable. Dev mode uses placeholder events.';
+      text = LIVE.placeholder;
       badge = 'Placeholder (not real data)';
     } else {
-      text = `Live NASA feed unavailable. The game uses archived NASA records (retrieved ${date}).`;
+      text = LIVE.archived(date);
       badge = `Archived (retrieved ${date})`;
     }
   }

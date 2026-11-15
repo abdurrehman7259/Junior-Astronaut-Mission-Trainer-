@@ -24,6 +24,15 @@ export function siteOf(state: Pick<GameState, 'site'>): SiteId {
 }
 
 /** True when every unit is a whole number in 0..10 and the total is exactly 10. */
+/** A plan being built on the day screen: whole units 0..10 that sum to at most 10 (D-038). */
+export function isValidDraft(a: Allocation): boolean {
+  const parts = [a.life, a.shield, a.science];
+  return (
+    parts.every((n) => Number.isInteger(n) && n >= 0 && n <= POWER_UNITS_PER_DAY) &&
+    parts.reduce((s, n) => s + n, 0) <= POWER_UNITS_PER_DAY
+  );
+}
+
 export function isValidAllocation(a: Allocation): boolean {
   const parts = [a.life, a.shield, a.science];
   return (

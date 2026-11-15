@@ -36,6 +36,13 @@ export const AllocationSchema = z
     message: `Allocation must sum to ${POWER_UNITS_PER_DAY}`,
   });
 
+/** A plan in progress (sum 0..10). Saves store it so a resumed day keeps what was shared (D-038). */
+export const DraftAllocationSchema = z
+  .object({ life: units, shield: units, science: units })
+  .refine((a) => a.life + a.shield + a.science <= POWER_UNITS_PER_DAY, {
+    message: `Draft must sum to at most ${POWER_UNITS_PER_DAY}`,
+  });
+
 export const MetersSchema = z.object({ power: meter, lifeSupport: meter, crewHealth: meter });
 
 /** Signed per-meter change (used for TurnResult.deltas). */

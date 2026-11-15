@@ -1,4 +1,4 @@
-import { eventSetIdOf, isValidAllocation, siteOf } from '../shared/eventSet';
+import { eventSetIdOf, isValidAllocation, isValidDraft, siteOf } from '../shared/eventSet';
 import { SITES } from '../shared/sites';
 import type { Allocation, GameState, SiteId, SolarEvent, TurnResult } from '../shared/types';
 import { engine } from './engine';
@@ -10,6 +10,9 @@ import type { SavedGame } from './save';
  */
 export type Screen = 'loading' | 'start' | 'mission' | 'report' | 'end' | 'error';
 
+/** Each day starts with nothing shared, so the player makes a real choice (P3, D-038; replaces D-011's carry-over). */
+export const EMPTY_ALLOCATION: Allocation = { life: 0, shield: 0, science: 0 };
+/** The "Balanced" quick plan. */
 export const DEFAULT_ALLOCATION: Allocation = { life: 4, shield: 3, science: 3 };
 export const DEFAULT_CREW = 'Cadets';
 
@@ -33,13 +36,15 @@ export interface AppState {
   crewName: string;
   game: GameState | null;
   lastResult: TurnResult | null;
-  /** The plan on the allocator. Carries over from the previous day (D-011). Always valid. */
+  /** The plan on the allocator. Starts empty each day (D-038); may be incomplete (sum 0..10). Only a full plan can be played. */
   allocation: Allocation;
   /** Ids of the last 3 event sets drawn for the current site, newest last. */
   recentSetIds: string[];
   /** The same, remembered per site. */
   recentBySite: Partial<Record<SiteId, string[]>>;
   dataPanelOpen: boolean;
+  /** The "How to play" intro dialog (P1). */
+  howToOpen: boolean;
   /** A short, polite message for the start screen (e.g. a campaign has no data). */
   notice: string | null;
 }
@@ -55,7 +60,9 @@ export type Action =
   | { type: 'continue' }
   | { type: 'playAgain'; seed: number }
   | { type: 'openDataPanel' }
-  | { type: 'closeDataPanel' };
+  | { type: 'closeDataPanel' }
+  | { type: 'openHowTo' }
+  | { type: 'closeHowTo' };
 
 export const initialState: AppState = {
   screen: 'loading',
@@ -67,10 +74,11 @@ export const initialState: AppState = {
   crewName: DEFAULT_CREW,
   game: null,
   lastResult: null,
-  allocation: DEFAULT_ALLOCATION,
+  allocation: EMPTY_ALLOCATION,
   recentSetIds: [],
   recentBySite: {},
   dataPanelOpen: false,
+  howToOpen: false,
   notice: null,
 };
 
@@ -102,7 +110,7 @@ function begin(state: AppState, seed: number): AppState {
     notice: null,
     game,
     lastResult: null,
-    allocation: DEFAULT_ALLOCATION,
+    allocation: EMPTY_ALLOCATION,
     recentSetIds: nextRecent,
     recentBySite: { ...state.recentBySite, [site]: nextRecent },
   };
@@ -151,7 +159,7 @@ export function reducer(state: AppState, action: Action): AppState {
     case 'playAgain':
       return begin(state, action.seed);
     case 'setAllocation':
-      return isValidAllocation(action.allocation) ? { ...state, allocation: { ...action.allocation } } : state;
+      return isValidDraft(action.allocation) ? { ...state, allocation: { ...action.allocation } } : state;
     case 'playDay': {
       if (state.screen !== 'mission' || !state.game || state.game.status !== 'playing') return state;
       if (!isValidAllocation(action.allocation)) return state;
@@ -160,12 +168,18 @@ export function reducer(state: AppState, action: Action): AppState {
     }
     case 'continue': {
       if (state.screen !== 'report' || !state.game) return state;
-      return { ...state, screen: state.game.status === 'playing' ? 'mission' : 'end' };
+      return state.game.status === 'playing'
+        ? { ...state, screen: 'mission', allocation: EMPTY_ALLOCATION }
+        : { ...state, screen: 'end' };
     }
     case 'openDataPanel':
       return { ...state, dataPanelOpen: true };
     case 'closeDataPanel':
       return { ...state, dataPanelOpen: false };
+    case 'openHowTo':
+      return { ...state, howToOpen: true };
+    case 'closeHowTo':
+      return { ...state, howToOpen: false };
   }
 }
 

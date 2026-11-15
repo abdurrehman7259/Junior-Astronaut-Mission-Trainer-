@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AllocationSchema, GameStateSchema, TurnResultSchema } from '../shared/schemas';
+import { DraftAllocationSchema, GameStateSchema, TurnResultSchema } from '../shared/schemas';
 import type { Allocation, GameState, SiteId, TurnResult } from '../shared/types';
 
 /** Save slot for resuming a mission (FR-14). Game progress only; the crew name is local-only. */
@@ -12,6 +12,7 @@ export interface SavedGame {
   screen: 'mission' | 'report';
   game: GameState;
   lastResult: TurnResult | null;
+  /** The plan on the day screen; may be incomplete (sum 0..10, D-038). */
   allocation: Allocation;
   recentSetIds: string[];
   placeholder: boolean;
@@ -27,7 +28,7 @@ const SavedGameSchema = z
     screen: z.enum(['mission', 'report']),
     game: GameStateSchema,
     lastResult: TurnResultSchema.nullable(),
-    allocation: AllocationSchema,
+    allocation: DraftAllocationSchema,
     recentSetIds: z.array(z.string()).max(3),
     placeholder: z.boolean(),
     site: z.enum(['moon', 'mars']).optional(),

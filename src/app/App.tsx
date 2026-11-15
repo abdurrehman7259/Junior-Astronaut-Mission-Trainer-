@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo, useReducer, useRef } from 'react';
 import { AppShell } from '../ui/components/AppShell';
 import { DataPanel } from '../ui/components/DataPanel';
+import { HowToPlay } from '../ui/components/HowToPlay';
 import { EndScreen } from '../ui/screens/EndScreen';
 import { ErrorScreen } from '../ui/screens/ErrorScreen';
 import { LoadingScreen } from '../ui/screens/LoadingScreen';
@@ -14,6 +15,8 @@ import { engine } from './engine';
 import { clearSave, loadGame, saveGame, type SavedGame } from './save';
 import { isStubEvent } from './stub-events';
 import { initialState, newSeed, reducer } from './state';
+import { hasSeenIntro, markIntroSeen } from './intro';
+import { isValidAllocation } from '../shared/eventSet';
 import type { SiteId } from '../shared/types';
 
 export function App({
@@ -27,6 +30,9 @@ export function App({
 }) {
   const [state, dispatch] = useReducer(reducer, initialState);
   const dataButtonRef = useRef<HTMLButtonElement>(null);
+  const howToButtonRef = useRef<HTMLButtonElement>(null);
+  // Opened automatically on the first Start: focus returns to the Day 1 heading, not the header button.
+  const [howToAuto, setHowToAuto] = useState(false);
   const [saved, setSaved] = useState<SavedGame | null>(null);
   const [extras, setExtras] = useState<LoadedExtras>({ osdr: null, radlab: null });
   // undefined = still loading, null = unavailable (no placeholder for Mars, ever).
@@ -124,7 +130,7 @@ export function App({
 
   // Live preview for the allocator (US-02): what today would do with the current plan.
   const preview = useMemo(() => {
-    if (screen !== 'mission' || !game || game.status !== 'playing') return null;
+    if (screen !== 'mission' || !game || game.status !== 'playing' || !isValidAllocation(allocation)) return null;
     try {
       return engine.previewTurn(game, allocation);
     } catch {
@@ -143,6 +149,12 @@ export function App({
         isPlaceholder={state.isPlaceholder}
         onOpenData={() => dispatch({ type: 'openDataPanel' })}
         dataButtonRef={dataButtonRef}
+        goal={game && screen !== 'start' ? { site, science: game.scienceScore } : { site, science: null }}
+        onOpenHowTo={() => {
+          setHowToAuto(false);
+          dispatch({ type: 'openHowTo' });
+        }}
+        howToButtonRef={howToButtonRef}
         banner={
           screen === 'start' ? (
             <LiveBanner live={live} retrievedAt={state.retrievedAt} isPlaceholder={state.isPlaceholder} />
@@ -155,7 +167,14 @@ export function App({
         {screen === 'start' && (
           <StartScreen
             marsStatus={mars === undefined ? 'loading' : mars ? 'ready' : 'unavailable'}
-            onStart={(crewName, chosen) => dispatch({ type: 'startMission', seed: newSeed(), crewName, site: chosen })}
+            onStart={(crewName, chosen) => {
+              dispatch({ type: 'startMission', seed: newSeed(), crewName, site: chosen });
+              // First time only: the 3-card intro opens over Day 1 (P1).
+              if (!hasSeenIntro()) {
+                setHowToAuto(true);
+                dispatch({ type: 'openHowTo' });
+              }
+            }}
             resume={
               saved
                 ? {
@@ -211,6 +230,15 @@ export function App({
         mars={mars ?? null}
         live={live}
         returnFocusRef={dataButtonRef}
+      />
+      <HowToPlay
+        open={state.howToOpen}
+        site={site}
+        onClose={() => {
+          markIntroSeen();
+          dispatch({ type: 'closeHowTo' });
+        }}
+        returnFocusRef={howToAuto ? undefined : howToButtonRef}
       />
     </>
   );
