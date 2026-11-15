@@ -55,3 +55,52 @@
 .end-actions p {
   margin: 0;
 }
+
+.end-screen {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+  align-items: start;
+}
+.end-summary {
+  min-width: 0;
+}
+.end-summary h1,
+.end-summary .end-outcome {
+  margin: 0;
+}
+.end-outcome {
+  font-size: var(--font-size-lg);
+}
+.end-score {
+  margin: 0;
+  font-size: 2.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-science);
+}
+.end-timeline,
+.end-fact,
+.end-actions {
+  min-width: 0;
+}
+.debrief-study {
+  font-size: var(--font-size-sm);
+}
+@media (min-width: 1024px) {
+  .end-screen {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+  .end-summary {
+    grid-column: 1;
+  }
+  .end-timeline {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .end-fact,
+  .end-actions {
+    grid-column: 1 / -1;
+  }
+}

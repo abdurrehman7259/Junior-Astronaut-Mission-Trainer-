@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react';
 import { SITE_IDS, SITES } from '../../shared/sites';
 import type { SiteId } from '../../shared/types';
-import { dayWordCap } from '../../app/state';
-import { CheckIcon } from '../components/icons';
+import { CheckIcon, WarningIcon } from '../components/icons';
 import { ScreenHeading } from '../components/ScreenHeading';
+import { START, START_END } from '../content/copy';
 import { CREW_NAME_MAX, DEFAULT_CREW_NAME, loadCrewName, sanitizeCrewName, saveCrewName } from './crewName';
 import './StartScreen.css';
 
@@ -24,11 +24,6 @@ function MoonBaseArt() {
     </svg>
   );
 }
-
-const SITE_BLURB: Record<SiteId, string> = {
-  moon: "Run a base near the Moon's south pole. In this game, Mission Control warns you before each storm.",
-  mars: 'Run a base in Jezero Crater on Mars. Storm warnings from Earth arrive a sol late.',
-};
 
 function SiteIcon({ site }: { site: SiteId }) {
   return (
@@ -84,34 +79,33 @@ export function StartScreen({
   return (
     <section className="start-screen">
       <div className="start-copy stack">
-        <ScreenHeading>Moon Base Cadets</ScreenHeading>
-        <p className="start-tagline">Run a Moon base. Survive real solar storms.</p>
-        <p>Your crew lives at a base near the Moon&apos;s south pole.</p>
-        <p>Each day, share 10 power units between Life support, Shielding and Science.</p>
-        <p>Real solar storms from NASA records will hit. Be ready!</p>
+        <ScreenHeading>{START.title}</ScreenHeading>
+        <p className="start-tagline">{START.tagline}</p>
+        <p className="start-goal">{START.goal}</p>
 
         {resume && (
           <div className="start-resume stack">
             <button type="button" className="btn btn-primary btn-large start-button" onClick={resume.onResume}>
-              {resume.site === 'mars' ? 'Continue Mars mission' : 'Continue mission'} ({dayWordCap(resume.site ?? 'moon')} {resume.day})
+              {START.continue(resume.site ?? 'moon', SITES[resume.site ?? 'moon'].dayWord, resume.day)}
             </button>
-            <p>Crew {resume.crewName} is waiting at the base.</p>
+            <p>{START.crewWaiting(resume.crewName)}</p>
           </div>
         )}
 
         <form className="start-form" onSubmit={start}>
           <div role="radiogroup" aria-labelledby="site-picker-label" className="site-picker">
             <p id="site-picker-label" className="start-label">
-              Choose your base
+              {START.chooseBase}
             </p>
             {SITE_IDS.map((id) => {
               const disabled = id === 'mars' && marsStatus !== 'ready';
               const note =
                 id === 'mars' && marsStatus === 'unavailable'
-                  ? 'Coming soon'
+                  ? START_END.comingSoon
                   : id === 'mars' && marsStatus === 'loading'
-                    ? 'Loading Mars data…'
+                    ? START_END.loadingMars
                     : null;
+              const hard = id === 'mars';
               return (
                 <label key={id} className={`site-card${site === id ? ' is-selected' : ''}${disabled ? ' is-disabled' : ''}`}>
                   <input
@@ -122,7 +116,7 @@ export function StartScreen({
                     checked={site === id}
                     disabled={disabled}
                     aria-labelledby={`site-${id}-name`}
-                    aria-describedby={`site-${id}-desc`}
+                    aria-describedby={`site-${id}-badge site-${id}-desc`}
                     onChange={() => setPicked(id)}
                   />
                   <span className="site-dot" aria-hidden="true" />
@@ -130,13 +124,18 @@ export function StartScreen({
                   <span className="site-text">
                     <span className="site-head">
                       <strong id={`site-${id}-name`}>{SITES[id].name}</strong>
+                      <span id={`site-${id}-badge`} className={`site-badge ${hard ? 'is-hard' : 'is-easy'}`}>
+                        {hard ? <WarningIcon size={16} /> : <CheckIcon size={16} />}
+                        <span className="visually-hidden">{START_END.badgeLabel} </span>
+                        {hard ? START.siteBadgeHard : START.siteBadgeEasy}
+                      </span>
                       <span className="site-selected" aria-hidden="true">
                         <CheckIcon size={18} />
-                        Selected
+                        {START_END.selected}
                       </span>
                     </span>
                     <span id={`site-${id}-desc`} className="site-desc">
-                      {SITE_BLURB[id]}
+                      {hard ? START.siteHard : START.siteEasy}
                     </span>
                     {note && <span className="site-note">{note}</span>}
                   </span>
@@ -145,7 +144,7 @@ export function StartScreen({
             })}
           </div>
           <label htmlFor="crew-name" className="start-label">
-            Crew name (optional)
+            {START.crewLabel}
           </label>
           <input
             id="crew-name"
@@ -158,13 +157,13 @@ export function StartScreen({
             onChange={(e) => setName(sanitizeCrewName(e.target.value))}
           />
           <p className="start-hint">
-            <span id="crew-name-hint">Stays on this device only.</span>{' '}
+            <span id="crew-name-hint">{START.crewHint}</span>{' '}
             <span id="crew-name-count">
               {name.length}/{CREW_NAME_MAX}
             </span>
           </p>
           <button type="submit" className={`btn btn-large start-button ${resume ? 'btn-secondary' : 'btn-primary'}`}>
-            {resume ? 'New mission' : 'Start mission'}
+            {resume ? START.newMission : START.start}
           </button>
         </form>
       </div>

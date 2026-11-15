@@ -23,6 +23,29 @@ describe('StartScreen', () => {
     expect(screen.getByText('Stays on this device only.')).toBeInTheDocument();
   });
 
+  it('shows the goal, drops the old intro paragraphs, and labels the sites Easier and Harder', () => {
+    render(<StartScreen onStart={() => {}} marsStatus="ready" />);
+    expect(
+      screen.getByText('Your goal: keep your crew safe for 10 days and earn science points.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/share 10 power units/i)).toBeNull();
+    expect(screen.queryByText(/Life support/)).toBeNull();
+    expect(screen.queryByText(/a sol late/)).toBeNull();
+    const moon = screen.getByRole('radio', { name: /Moon/ });
+    const mars = screen.getByRole('radio', { name: /Mars/ });
+    expect(moon).toHaveAccessibleDescription(/Easier.*Easier: you get a warning before each storm./);
+    expect(mars).toHaveAccessibleDescription(/Harder.*Harder: storm warnings from Earth arrive one day late./);
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+  });
+
+  it('keeps the Coming soon and Loading notes for Mars', () => {
+    const { rerender } = render(<StartScreen onStart={() => {}} />);
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Mars/ })).toBeDisabled();
+    rerender(<StartScreen onStart={() => {}} marsStatus="loading" />);
+    expect(screen.getByText('Loading Mars data…')).toBeInTheDocument();
+  });
+
   it('offers Continue mission and a New mission button when a save exists', async () => {
     const user = userEvent.setup();
     const onResume = vi.fn();

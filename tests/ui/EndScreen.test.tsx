@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
-import { EndScreen, pickReflection } from '../../src/ui/screens/EndScreen';
+import { EndScreen } from '../../src/ui/screens/EndScreen';
 import { STUB_EVENTS } from '../../src/app/stub-events';
 import type { GameState, ScienceFact, SolarEvent, TurnResult } from '../../src/shared/types';
 
@@ -33,7 +33,7 @@ function turn(day: number, event: SolarEvent, shield = 3, science = 3, health = 
   };
 }
 
-const game = (history: TurnResult[], status: GameState['status'] = 'won'): GameState => ({
+const game = (history: TurnResult[], status: GameState['status'] = 'won', site: GameState['site'] = 'moon'): GameState => ({
   day: history.length,
   meters: m,
   scienceScore: 42,
@@ -43,6 +43,7 @@ const game = (history: TurnResult[], status: GameState['status'] = 'won'): GameS
   events: history.map((h) => h.event),
   carryOver: [],
   status,
+  site,
 });
 
 const fact: ScienceFact = {
@@ -59,14 +60,60 @@ describe('EndScreen', () => {
     turn(3, real(12, 'CME', 2), 3, 3, 0),
   ];
 
-  it('shows the won and ended headings', () => {
-    const { rerender } = render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} />);
+  it('won: outcome title, one why sentence, then score, meters, lesson, timeline, play again', () => {
+    render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} fact={fact} />);
     expect(screen.getByRole('heading', { level: 1, name: 'You made it!' })).toBeInTheDocument();
-    expect(screen.getByText('Science score')).toBeInTheDocument();
-    rerender(<EndScreen game={game(hist, 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByText('Crew Nova stayed safe for all 3 days.')).toBeInTheDocument();
+    expect(screen.getByText('Science ★ 42')).toBeInTheDocument();
+    expect(screen.getByText('Science score: 42')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'What you learned' })).toBeInTheDocument();
+    expect(screen.getByText('You balanced safety and science. Great work!')).toBeInTheDocument();
+    const order = [
+      screen.getByRole('heading', { level: 1 }),
+      screen.getByText('Science ★ 42'),
+      screen.getByRole('heading', { name: 'What you learned' }),
+      screen.getByRole('heading', { name: 'What really happened' }),
+      screen.getByRole('heading', { name: 'Real NASA science' }),
+      screen.getByRole('button', { name: 'Play again' }),
+    ];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    expect(screen.getByText("You'll get a new set of real space weather.")).toBeInTheDocument();
+  });
+
+  it('lost by crew health: says radiation hurt the crew', () => {
+    const last = { ...turn(3, real(12, 'CME', 3), 0, 3, -20), after: { ...m, crewHealth: 0 }, statusAfter: 'ended' as const };
+    render(<EndScreen game={game([hist[0]!, last], 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Mission over. The crew flies home safely.' })).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { level: 1, name: 'Mission Control brings the crew home safely.' }),
+      screen.getByText('Storm radiation hurt the crew too much. Try more shields on storm days.'),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Air & food ran out/)).toBeNull();
+  });
+
+  it('lost by air: says air and food ran out, with the air lesson', () => {
+    const last = { ...turn(2, real(11, 'QUIET', 0), 3, 3), after: { ...m, lifeSupport: 0 }, statusAfter: 'ended' as const };
+    render(<EndScreen game={game([hist[0]!, last], 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByText('Air & food ran out. Give it at least 4 power every day.')).toBeInTheDocument();
+    expect(screen.queryByText(/Storm radiation hurt/)).toBeNull();
+    expect(screen.getByText('Air & food needs at least 4 power every day.')).toBeInTheDocument();
+  });
+
+  it('Mars: uses sol wording', () => {
+    render(<EndScreen game={game(hist, 'won', 'mars')} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByText('Crew Nova stayed safe for all 3 sols.')).toBeInTheDocument();
+    const rows = within(screen.getByRole('list', { name: 'Sol by sol' })).getAllByRole('listitem');
+    expect(within(rows[0]!).getByText('Sol 1')).toBeInTheDocument();
+    expect(screen.queryByText(/Day 1/)).toBeNull();
+  });
+
+  it('shows the storm lesson after a hurt storm day, never "Game strength"', () => {
+    const hurt = { ...turn(1, real(1, 'CME', 3), 1, 3, -10), dose: { incoming: 20, blocked: 5, received: 15 } };
+    render(<EndScreen game={game([hurt])} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByText('More shields on big storm days protect your crew.')).toBeInTheDocument();
+    expect(screen.queryByText(/Game strength/)).toBeNull();
+    expect(screen.getByText(/Storm size: Big/)).toBeInTheDocument();
   });
 
   it('has one timeline row per day, with dates and a NASA link on every real day (storms and quiet days)', () => {
@@ -80,8 +127,9 @@ describe('EndScreen', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     expect(within(rows[1]!).getByRole('link', { name: /See the NASA record/ })).toBeInTheDocument();
     expect(within(rows[2]!).getByRole('link')).toBeInTheDocument();
-    expect(within(rows[0]!).getByText(/Life 4 · Shield 3 · Science 3/)).toBeInTheDocument();
+    expect(within(rows[0]!).getByText(/Air & food 4 · Shields 3 · Science 3/)).toBeInTheDocument();
     expect(within(rows[0]!).getByText(/went down by 5/)).toBeInTheDocument();
+    expect(within(rows[2]!).getByText(/Crew health ● 0/)).toBeInTheDocument();
     expect(within(rows[1]!).getByText(/went up by 2/)).toBeInTheDocument();
     expect(within(rows[2]!).getByText(/no change/)).toBeInTheDocument();
   });
@@ -95,7 +143,7 @@ describe('EndScreen', () => {
     const { rerender } = render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} fact={fact} />);
     expect(screen.getByRole('heading', { level: 2, name: 'Real NASA science' })).toBeInTheDocument();
     expect(screen.getByText('Mice in space lose bone.')).toBeInTheDocument();
-    expect(screen.getByText('Study: Bone study X')).toBeInTheDocument();
+    expect(screen.getByText('Study title: Bone study X')).toBeInTheDocument();
     const link = screen.getByRole('link', { name: /Read about this study/ });
     expect(link).toHaveAttribute('href', fact.osdrUrl);
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
@@ -108,25 +156,5 @@ describe('EndScreen', () => {
     render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={fn} />);
     await userEvent.setup().click(screen.getByRole('button', { name: 'Play again' }));
     expect(fn).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('pickReflection', () => {
-  it('suggests shielding after a hurt storm day with low shield', () => {
-    expect(pickReflection([turn(1, real(1, 'CME', 3), 1, 3, -10)])).toMatch(/more shielding/);
-  });
-  it('suggests science when most quiet days had none', () => {
-    const h = [
-      turn(1, real(1, 'QUIET', 0), 3, 0),
-      turn(2, real(2, 'QUIET', 0), 3, 0),
-      turn(3, real(3, 'QUIET', 0), 3, 4),
-    ];
-    expect(pickReflection(h)).toMatch(/quiet days are great for science/);
-  });
-  it('otherwise praises', () => {
-    expect(pickReflection([turn(1, real(1, 'CME', 3), 5, 2, -2), turn(2, real(2, 'QUIET', 0), 3, 3)])).toBe(
-      'Great balancing!',
-    );
-    expect(pickReflection([])).toBe('Great balancing!');
   });
 });
