@@ -1,9 +1,26 @@
+/* Day screen: three numbered steps. Two columns from 1024 px (fits 1280x720); one column below. */
+.mission.stack {
+  gap: var(--space-3);
+  align-items: stretch;
+}
+@media (min-width: 1024px) {
+  /* Pull the screen up a little so everything fits 1280x720. */
+  .mission.stack {
+    margin-top: calc(var(--space-4) * -1);
+    gap: var(--space-2);
+  }
+}
+
 .mission-head {
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
   justify-content: space-between;
-  gap: var(--space-2, 0.5rem) var(--space-4, 1rem);
+  gap: var(--space-1) var(--space-4);
+}
+.mission-head h1 {
+  margin: 0;
+  font-size: var(--font-size-h2);
 }
 
 .mission-crew {
@@ -12,17 +29,24 @@
   font-weight: 600;
 }
 
-.mission-words {
+.mission-step {
   margin: 0;
-  color: var(--color-text-muted);
-  line-height: 2;
+  font-size: var(--font-size-lg);
+}
+
+.mission-warn {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 700;
+  color: var(--color-warning);
 }
 
 .mission-carry-title {
-  margin: 0 0 var(--space-2, 0.5rem);
-  font-size: 1.125rem;
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-lg);
 }
-
 .mission-carry ul {
   margin: 0;
   padding-left: 1.25rem;
@@ -30,4 +54,38 @@
 
 .mission-col {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Keep the left column compact. */
+.mission-col-left .card {
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Below 1024 px: one column. The columns dissolve so the sticky Start bar (in PowerAllocator.css)
+   sticks across the whole screen, not only inside the right column. */
+.mission .mission-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+@media (max-width: 1023px) {
+  .mission .mission-col {
+    display: contents;
+  }
+  .mission-col-left > * {
+    min-width: 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .mission .mission-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
 }

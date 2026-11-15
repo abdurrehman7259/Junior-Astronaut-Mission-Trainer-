@@ -1,15 +1,24 @@
+/* Allocator card (step 2). Compact so the day screen fits 1280x720. */
 .pa {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: var(--space-2);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  padding: var(--space-3) var(--space-4);
   box-shadow: var(--shadow-sm);
+}
+.pa-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 .pa-heading {
   margin: 0;
+  font-size: var(--font-size-lg);
 }
 
 .pa-pool {
@@ -17,18 +26,17 @@
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);
-  align-self: flex-start;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-3);
   background: var(--color-surface-2);
   border: 2px solid var(--color-accent);
   border-radius: var(--radius-pill);
-  font-size: var(--font-size-lg);
   font-weight: 700;
 }
 .pa-pool-number {
   color: var(--color-accent);
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .pa-rows {
@@ -36,18 +44,17 @@
   margin: 0;
   padding: 0;
   display: grid;
-  /* minmax(0, …): a plain 1fr track never shrinks below min-content, so at 360 px the rows
-     overflowed the list (by 11 px in Firefox). A3/Gate 3, NFR-08. */
+  /* minmax(0, ...): a plain 1fr track never shrinks below min-content (A3/Gate 3, NFR-08). */
   grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 .pa-row {
   --pa-color: var(--color-text);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   min-width: 0;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-surface-2);
   border: 2px solid var(--color-border);
   border-left: 8px solid var(--pa-color);
@@ -65,20 +72,14 @@
 
 .pa-row-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-3);
+  gap: 0 var(--space-2);
+  min-width: 0;
 }
 .pa-icon {
   flex: none;
-  width: 40px;
-  height: 40px;
   color: var(--pa-color);
-}
-.pa-row-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
 }
 .pa-name {
   color: var(--pa-color);
@@ -87,51 +88,40 @@
   line-height: var(--line-height-tight);
 }
 .pa-blurb {
+  flex: 1 1 12rem;
+  min-width: 0;
   color: var(--color-text-muted);
+  line-height: var(--line-height-tight);
 }
 .pa-units {
   flex: none;
   min-width: 2ch;
   text-align: right;
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.pa-cells {
-  display: grid;
-  grid-template-columns: repeat(10, 1fr);
-  gap: var(--space-1);
-}
-.pa-cell {
-  height: 16px;
-  border: 2px solid var(--pa-color);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  transition: background-color var(--duration-fast) var(--ease);
-}
-.pa-cell-on {
-  background: var(--pa-color);
-}
-
 .pa-controls {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 .pa-step {
   flex: none;
-  width: var(--touch-target);
-  height: var(--touch-target);
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
-  font-size: 1.75rem;
+  font-size: 1.5rem;
   line-height: 1;
 }
 .pa-slider {
   flex: 1;
   min-width: 0;
-  height: var(--touch-target);
+  height: 44px;
   margin: 0;
   accent-color: var(--pa-color);
   cursor: pointer;
@@ -143,68 +133,94 @@
 .pa-quick {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.pa-quick-label {
+  flex-basis: 100%;
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+.pa-quick-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.pa-quick .pa-preset {
+  min-height: 44px;
+  padding: var(--space-1) var(--space-3);
 }
 
-.pa-preview {
-  min-height: 3rem;
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-bg);
-  border: 2px dashed var(--color-border);
-  border-radius: var(--radius-md);
+/* Start (step 3). Wide screens: under the allocator. */
+.pa-start {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
-.pa-preview-hint {
+.pa-step3 {
   margin: 0;
-  font-weight: 700;
-  color: var(--color-accent);
-}
-.pa-preview-title {
-  margin: 0 0 var(--space-2);
-}
-.pa-preview-list,
-.pa-explain {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-1);
-}
-.pa-preview-list {
-  margin-bottom: var(--space-3);
   font-size: var(--font-size-lg);
 }
-.pa-preview-name {
+.pa-start-hint {
+  margin: 0;
   font-weight: 700;
-}
-.pa-preview-change {
-  font-weight: 800;
   color: var(--color-accent);
 }
-.pa-preview-after {
-  color: var(--color-text-muted);
-}
-.pa-dose {
-  margin: 0 0 var(--space-3);
-  font-weight: 700;
-  color: var(--color-warning);
-}
-.pa-explain {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-body);
-}
-
 .pa-confirm {
   align-self: stretch;
+  min-height: 56px;
+  font-size: var(--font-size-lg);
 }
 
-@media (min-width: 720px) {
-  .pa-confirm {
-    align-self: flex-start;
+/* Narrow screens: the Start button is always visible in a sticky bar at the bottom of the viewport.
+   (MissionScreen.css makes .mission-grid one flex column here, so the bar sticks across the whole screen.) */
+@media (max-width: 1023px) {
+  .pa-start {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    gap: var(--space-1);
+    margin-inline: calc(var(--gutter, 1rem) * -1);
+    padding: var(--space-2) var(--gutter, 1rem) calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    background: var(--color-surface);
+    border-top: 2px solid var(--color-border);
+    box-shadow: 0 -4px 12px rgb(0 0 0 / 0.25);
+  }
+  /* The heading stays for screen readers; the bar is kept short. */
+  .pa-step3 {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .pa-start-hint {
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-tight);
   }
 }
 
-.pa-preview-warn {
-  margin: 0 0 var(--space-3);
-  font-weight: 700;
-  color: var(--color-warning);
+/* Wide screens: heading and hint on the left, button on the right. One short row. */
+@media (min-width: 1024px) {
+  .pa-start {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-4);
+    row-gap: 0;
+  }
+  .pa-step3 {
+    grid-column: 1;
+  }
+  .pa-start-hint {
+    grid-column: 1;
+  }
+  .pa-start .pa-confirm {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    min-width: 12rem;
+    min-height: 52px;
+  }
 }

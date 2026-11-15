@@ -10,53 +10,35 @@ import {
   setUnits,
 } from '../../src/ui/components/allocation';
 import { PowerAllocator } from '../../src/ui/components/PowerAllocator';
-import type { Allocation, TurnResult } from '../../src/shared/types';
+import { DAY, NAMES, PRESETS } from '../../src/ui/content/copy';
+import type { Allocation } from '../../src/shared/types';
 
 const BALANCED: Allocation = { life: 4, shield: 3, science: 3 };
+const EMPTY: Allocation = { life: 0, shield: 0, science: 0 };
 
-function fixture(received = 6): TurnResult {
-  return {
-    day: 3,
-    allocation: BALANCED,
-    event: {
-      id: 'STUB-1',
-      source: 'DONKI',
-      kind: 'CME',
-      realDate: '2024-05-10',
-      severity: 2,
-      kidText: 'A solar cloud is coming.',
-      sourceUrl: 'https://example.org',
-    },
-    before: { power: 80, lifeSupport: 90, crewHealth: 80 },
-    after: { power: 85, lifeSupport: 90, crewHealth: 72 },
-    deltas: { power: 5, lifeSupport: 0, crewHealth: -8 },
-    scienceBefore: 30,
-    scienceGained: 9,
-    scienceAfter: 39,
-    dose: { incoming: 12, blocked: 6, received },
-    explanations: {
-      power: 'Power sentence.',
-      lifeSupport: 'Life sentence.',
-      crewHealth: 'Crew sentence.',
-      science: 'Science sentence.',
-    },
-    statusAfter: 'playing',
-  };
-}
-
-function setup(over: Partial<Parameters<typeof PowerAllocator>[0]> = {}) {
+/** A parent that stores onChange back into value, like the app does. */
+function setup(
+  startValue: Allocation = EMPTY,
+  over: Partial<Omit<Parameters<typeof PowerAllocator>[0], 'value' | 'onChange'>> = {},
+) {
   const onChange = vi.fn();
   const onConfirm = vi.fn();
-  const utils = render(
-    <PowerAllocator
-      value={BALANCED}
-      onChange={onChange}
-      preview={fixture()}
-      onConfirm={onConfirm}
-      day={3}
-      {...over}
-    />,
-  );
+  function Parent() {
+    const [v, setV] = useState<Allocation>(startValue);
+    return (
+      <PowerAllocator
+        value={v}
+        onChange={(n) => {
+          onChange(n);
+          setV(n);
+        }}
+        onConfirm={onConfirm}
+        day={3}
+        {...over}
+      />
+    );
+  }
+  const utils = render(<Parent />);
   return { onChange, onConfirm, user: userEvent.setup(), ...utils };
 }
 
@@ -65,7 +47,11 @@ const plus = (name: string) => screen.getByRole('button', { name: `Add one unit 
 const minus = (name: string) =>
   screen.getByRole('button', { name: `Remove one unit from ${name}` });
 const pool = () => screen.getByText(/Power left to share/);
-const confirm = () => screen.getByRole('button', { name: 'Run day 3' });
+const startBtn = (name = 'Start day 3') => screen.getByRole('button', { name });
+
+const AIR = NAMES.air;
+const SHIELDS = NAMES.shield;
+const SCIENCE = NAMES.science;
 
 function sum(a: Allocation) {
   return a.life + a.shield + a.science;
@@ -113,190 +99,195 @@ describe('allocation helpers', () => {
 });
 
 describe('PowerAllocator', () => {
-  it('starts complete: pool 0, + disabled, confirm enabled', () => {
+  it('starts empty: pool 10, Start disabled with the hint linked to it', () => {
     setup();
-    expect(pool()).toHaveTextContent('Power left to share: 0');
-    expect(plus('Life support')).toBeDisabled();
-    expect(plus('Shielding')).toBeDisabled();
-    expect(confirm()).toBeEnabled();
-    expect(slider('Shielding')).toHaveAttribute('aria-valuetext', '3 of 10 units');
+    expect(pool()).toHaveTextContent('Power left to share: 10');
+    expect(slider(AIR)).toHaveValue('0');
+    expect(startBtn()).toBeDisabled();
+    const hint = screen.getByText('Share all 10 power to start the day.');
+    expect(hint).toBeVisible();
+    expect(startBtn()).toHaveAttribute('aria-describedby', hint.id);
   });
 
-  it('minus frees a unit, plus takes it back, and + is disabled only at pool 0', async () => {
-    const { user } = setup();
-    await user.click(minus('Shielding'));
-    expect(pool()).toHaveTextContent('Power left to share: 1');
-    expect(slider('Shielding')).toHaveValue('2');
-    expect(plus('Science')).toBeEnabled();
-    await user.click(plus('Science'));
-    expect(slider('Science')).toHaveValue('4');
-    expect(pool()).toHaveTextContent('Power left to share: 0');
-    expect(plus('Science')).toBeDisabled();
+  it('uses the sol hint and button on Mars', () => {
+    setup(EMPTY, { site: 'mars' });
+    expect(screen.getByText('Share all 10 power to start the sol.')).toBeInTheDocument();
+    expect(startBtn('Start sol 3')).toBeDisabled();
   });
 
-  it('minus is disabled when the system has 0 units', async () => {
-    const { user } = setup({ value: { life: 10, shield: 0, science: 0 } });
-    expect(minus('Shielding')).toBeDisabled();
-    await user.click(minus('Life support'));
-    expect(minus('Life support')).toBeEnabled();
+  it('shows the heading, the steps and the new names', () => {
+    setup();
+    expect(screen.getByRole('heading', { name: '2. Share your 10 power' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '3. Start the day' })).toBeInTheDocument();
+    expect(screen.queryByText(/Life support|Shielding|Power reserve/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Game dose|If you run this plan/)).not.toBeInTheDocument();
   });
 
-  it('disables confirm while the pool is above 0 and shows the hint instead of the preview', async () => {
+  it('enables Start and drops the hint once all 10 are shared', async () => {
     const { user, onConfirm } = setup();
-    await user.click(minus('Life support'));
-    expect(confirm()).toBeDisabled();
-    expect(screen.getByText('Share all 10 units to see what happens.')).toBeInTheDocument();
-    expect(screen.queryByText('If you run this plan:')).not.toBeInTheDocument();
-    await user.click(confirm());
-    expect(onConfirm).not.toHaveBeenCalled();
-  });
-
-  it('calls onConfirm when enabled', async () => {
-    const { user, onConfirm } = setup();
-    await user.click(confirm());
+    await user.click(screen.getByRole('button', { name: DAY.presets.balanced }));
+    expect(pool()).toHaveTextContent('Power left to share: 0');
+    expect(startBtn()).toBeEnabled();
+    expect(startBtn()).not.toHaveAttribute('aria-describedby');
+    expect(screen.queryByText('Share all 10 power to start the day.')).not.toBeInTheDocument();
+    await user.click(startBtn());
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('only calls onChange with allocations that sum to 10', async () => {
+  it('does not call onConfirm while the plan is incomplete', async () => {
+    const { user, onConfirm } = setup({ life: 4, shield: 3, science: 2 });
+    expect(pool()).toHaveTextContent('Power left to share: 1');
+    await user.click(startBtn());
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
+  it('plus takes from the pool, minus gives back, and + is disabled only at pool 0', async () => {
+    const { user } = setup(BALANCED);
+    expect(plus(SCIENCE)).toBeDisabled();
+    await user.click(minus(SHIELDS));
+    expect(pool()).toHaveTextContent('Power left to share: 1');
+    expect(slider(SHIELDS)).toHaveValue('2');
+    expect(plus(SCIENCE)).toBeEnabled();
+    await user.click(plus(SCIENCE));
+    expect(slider(SCIENCE)).toHaveValue('4');
+    expect(pool()).toHaveTextContent('Power left to share: 0');
+  });
+
+  it('minus is disabled when the system has 0 units', () => {
+    setup({ life: 10, shield: 0, science: 0 });
+    expect(minus(SHIELDS)).toBeDisabled();
+    expect(minus(AIR)).toBeEnabled();
+  });
+
+  it('calls onChange on every change, with any sum', async () => {
     const { user, onChange } = setup();
-    await user.click(minus('Shielding')); // pool 1: no call
-    expect(onChange).not.toHaveBeenCalled();
-    await user.click(plus('Life support')); // 5/2/3: valid
-    expect(onChange).toHaveBeenCalledTimes(1);
-    expect(onChange).toHaveBeenLastCalledWith({ life: 5, shield: 2, science: 3 });
-    await user.click(minus('Life support'));
-    await user.click(minus('Science'));
-    expect(onChange).toHaveBeenCalledTimes(1);
-    await user.click(plus('Shielding'));
-    await user.click(plus('Shielding'));
-    for (const call of onChange.mock.calls) expect(sum(call[0] as Allocation)).toBe(10);
-    expect(onChange).toHaveBeenLastCalledWith({ life: 4, shield: 4, science: 2 });
+    await user.click(plus(AIR));
+    expect(onChange).toHaveBeenLastCalledWith({ life: 1, shield: 0, science: 0 });
+    await user.click(plus(SHIELDS));
+    await user.click(plus(SHIELDS));
+    expect(onChange).toHaveBeenCalledTimes(3);
+    expect(onChange).toHaveBeenLastCalledWith({ life: 1, shield: 2, science: 0 });
+    await user.click(minus(AIR));
+    expect(onChange).toHaveBeenLastCalledWith({ life: 0, shield: 2, science: 0 });
+    for (const call of onChange.mock.calls) expect(sum(call[0] as Allocation)).toBeLessThanOrEqual(10);
   });
 
   it('slider moves clamp to the pool and return units when dragged down', () => {
-    const { onChange } = setup();
-    fireEvent.change(slider('Life support'), { target: { value: '1' } });
+    const { onChange } = setup(BALANCED);
+    fireEvent.change(slider(AIR), { target: { value: '1' } });
     expect(pool()).toHaveTextContent('Power left to share: 3');
-    expect(onChange).not.toHaveBeenCalled();
-    fireEvent.change(slider('Science'), { target: { value: '10' } });
+    expect(onChange).toHaveBeenLastCalledWith({ life: 1, shield: 3, science: 3 });
+    fireEvent.change(slider(SCIENCE), { target: { value: '10' } });
     // science had 3 and the pool had 3, so it can reach 6 at most
-    expect(slider('Science')).toHaveValue('6');
+    expect(slider(SCIENCE)).toHaveValue('6');
     expect(pool()).toHaveTextContent('Power left to share: 0');
-    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenLastCalledWith({ life: 1, shield: 3, science: 6 });
   });
 
   it('a slider cannot take units when the pool is empty', () => {
-    const { onChange } = setup();
-    fireEvent.change(slider('Life support'), { target: { value: '9' } });
-    expect(slider('Life support')).toHaveValue('4');
+    const { onChange } = setup(BALANCED);
+    fireEvent.change(slider(AIR), { target: { value: '9' } });
+    expect(slider(AIR)).toHaveValue('4');
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it('arrow keys on a slider are handled natively (change events apply)', () => {
-    setup();
-    slider('Shielding').focus();
-    expect(slider('Shielding')).toHaveFocus();
-    fireEvent.change(slider('Shielding'), { target: { value: '2' } });
+    setup(BALANCED);
+    slider(SHIELDS).focus();
+    expect(slider(SHIELDS)).toHaveFocus();
+    fireEvent.change(slider(SHIELDS), { target: { value: '2' } });
     expect(pool()).toHaveTextContent('Power left to share: 1');
   });
 
-  it('Reset empties everything into the pool without calling onChange', async () => {
+  it('keeps keyboard focus when the + button becomes disabled', async () => {
+    const { user } = setup({ life: 4, shield: 3, science: 2 });
+    plus(SCIENCE).focus();
+    await user.keyboard('{Enter}');
+    expect(pool()).toHaveTextContent('Power left to share: 0');
+    expect(plus(SCIENCE)).toBeDisabled();
+    expect(slider(SCIENCE)).toHaveFocus();
+  });
+
+  it('keeps keyboard focus when the - button becomes disabled', async () => {
+    const { user } = setup({ life: 4, shield: 3, science: 1 });
+    minus(SCIENCE).focus();
+    await user.keyboard('{Enter}');
+    expect(minus(SCIENCE)).toBeDisabled();
+    expect(slider(SCIENCE)).toHaveFocus();
+  });
+
+  it('presets fill their plans from PRESETS and report them', async () => {
     const { user, onChange } = setup();
-    await user.click(screen.getByRole('button', { name: 'Reset' }));
-    expect(pool()).toHaveTextContent('Power left to share: 10');
-    expect(slider('Life support')).toHaveValue('0');
-    expect(slider('Shielding')).toHaveValue('0');
-    expect(slider('Science')).toHaveValue('0');
-    expect(confirm()).toBeDisabled();
-    expect(onChange).not.toHaveBeenCalled();
-  });
-
-  it('Balanced fills 4/3/3 and reports it', async () => {
-    const { user, onChange } = setup({ value: { life: 10, shield: 0, science: 0 } });
-    await user.click(screen.getByRole('button', { name: /Balanced/ }));
-    expect(onChange).toHaveBeenLastCalledWith({ life: 4, shield: 3, science: 3 });
-    expect(slider('Life support')).toHaveValue('4');
-  });
-
-  it('shows the preview arrows, signs and numbers from the fixture', () => {
-    setup();
-    expect(screen.getByText('If you run this plan:')).toBeInTheDocument();
-    const rows = screen.getAllByRole('listitem').filter((li) => li.className === 'pa-preview-row');
-    const text = rows.map((r) => r.textContent);
-    expect(text).toEqual([
-      'Power reserve ▲ up +5 (to 85)',
-      'Life support ● no change 0 (to 90)',
-      'Crew health ▼ down −8 (to 72)',
-      'Science ▲ up +9 (to 39)',
-    ]);
-    expect(screen.getByText('Game dose reaching the crew: 6')).toBeInTheDocument();
-    for (const s of ['Power sentence.', 'Life sentence.', 'Crew sentence.', 'Science sentence.']) {
-      expect(screen.getByText(s)).toBeInTheDocument();
+    expect(screen.getByText(DAY.presetsLabel)).toBeInTheDocument();
+    for (const [id, label] of [
+      ['balanced', DAY.presets.balanced],
+      ['storm', DAY.presets.storm],
+      ['science', DAY.presets.science],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name: label }));
+      expect(onChange).toHaveBeenLastCalledWith(PRESETS[id]);
+      expect(slider(AIR)).toHaveValue(String(PRESETS[id].life));
+      expect(slider(SHIELDS)).toHaveValue(String(PRESETS[id].shield));
+      expect(slider(SCIENCE)).toHaveValue(String(PRESETS[id].science));
+      expect(startBtn()).toBeEnabled();
     }
   });
 
-  it('hides the radiation line when nothing reaches the crew', () => {
-    setup({ preview: fixture(0) });
-    expect(screen.queryByText(/Game dose reaching the crew/)).not.toBeInTheDocument();
+  it('Clear empties everything, reports it and disables Start', async () => {
+    const { user, onChange } = setup(BALANCED);
+    await user.click(screen.getByRole('button', { name: DAY.reset }));
+    expect(onChange).toHaveBeenLastCalledWith(EMPTY);
+    expect(pool()).toHaveTextContent('Power left to share: 10');
+    expect(startBtn()).toBeDisabled();
   });
 
-  it('shows no preview panel content when preview is null', () => {
-    setup({ preview: null });
-    expect(screen.queryByText('If you run this plan:')).not.toBeInTheDocument();
-  });
-
-  it('syncs the draft when the value prop changes', () => {
-    const { rerender, onChange, onConfirm } = setup();
+  it('follows the value prop (the parent owns the draft)', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <PowerAllocator value={EMPTY} onChange={onChange} onConfirm={() => {}} day={3} />,
+    );
     rerender(
       <PowerAllocator
         value={{ life: 2, shield: 5, science: 3 }}
         onChange={onChange}
-        preview={fixture()}
-        onConfirm={onConfirm}
+        onConfirm={() => {}}
         day={4}
       />,
     );
-    expect(slider('Life support')).toHaveValue('2');
-    expect(slider('Shielding')).toHaveValue('5');
-    expect(screen.getByRole('button', { name: 'Run day 4' })).toBeEnabled();
-  });
-
-  it('works with a parent that stores onChange back into value', async () => {
-    function Parent() {
-      const [v, setV] = useState<Allocation>(BALANCED);
-      return (
-        <PowerAllocator value={v} onChange={setV} preview={fixture()} onConfirm={() => {}} day={3} />
-      );
-    }
-    const user = userEvent.setup();
-    render(<Parent />);
-    await user.click(minus('Shielding'));
-    await user.click(plus('Life support'));
-    expect(slider('Life support')).toHaveValue('5');
-    expect(slider('Shielding')).toHaveValue('2');
-    expect(pool()).toHaveTextContent('Power left to share: 0');
+    expect(slider(AIR)).toHaveValue('2');
+    expect(slider(SHIELDS)).toHaveValue('5');
+    expect(startBtn('Start day 4')).toBeEnabled();
   });
 
   it('disables every control when disabled', () => {
-    setup({ disabled: true });
-    expect(confirm()).toBeDisabled();
-    expect(slider('Life support')).toBeDisabled();
-    expect(minus('Life support')).toBeDisabled();
-    expect(plus('Life support')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Reset' })).toBeDisabled();
+    setup(BALANCED, { disabled: true });
+    expect(startBtn()).toBeDisabled();
+    expect(slider(AIR)).toBeDisabled();
+    expect(minus(AIR)).toBeDisabled();
+    expect(plus(AIR)).toBeDisabled();
+    expect(screen.getByRole('button', { name: DAY.reset })).toBeDisabled();
+    expect(screen.getByRole('button', { name: DAY.presets.balanced })).toBeDisabled();
   });
 
-  it('gives each system a text label, description and an aria-hidden icon', () => {
+  it('labels each system with a name, a one-line blurb and an aria-hidden icon', () => {
     const { container } = setup();
-    expect(screen.getByText('Air, water and food for the crew.')).toBeInTheDocument();
-    expect(screen.getByText('Protects the crew from solar radiation.')).toBeInTheDocument();
-    expect(screen.getByText('Experiments that earn science points.')).toBeInTheDocument();
+    expect(screen.getByText('Air, water and food. Give it at least 4 power a day.')).toBeInTheDocument();
+    expect(screen.getByText('Blocks radiation from solar storms.')).toBeInTheDocument();
+    expect(screen.getByText('Earns science points. Points help you win.')).toBeInTheDocument();
     const icons = container.querySelectorAll('svg.pa-icon');
     expect(icons).toHaveLength(3);
     icons.forEach((i) => expect(i).toHaveAttribute('aria-hidden', 'true'));
-    expect(container.querySelectorAll('.pa-cell-on')).toHaveLength(10);
-    expect(container.querySelectorAll('.pa-cell')).toHaveLength(30);
+    expect(screen.getByText(AIR)).toBeInTheDocument();
+    expect(screen.getByText(SCIENCE)).toBeInTheDocument();
+  });
+
+  it('makes Shields an inline glossary word', async () => {
+    const { user } = setup();
+    const term = screen.getByRole('button', { name: /^Shields/ });
+    expect(term).toHaveAttribute('aria-expanded', 'false');
+    await user.click(term);
+    expect(term).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('region', { name: 'Shielding' })).toBeInTheDocument();
   });
 
   it('announces the pool politely', () => {
