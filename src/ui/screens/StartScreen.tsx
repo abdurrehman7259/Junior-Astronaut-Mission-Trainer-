@@ -83,14 +83,7 @@ export function StartScreen({
         <p className="start-tagline">{START.tagline}</p>
         <p className="start-goal">{START.goal}</p>
 
-        {resume && (
-          <div className="start-resume stack">
-            <button type="button" className="btn btn-primary btn-large start-button" onClick={resume.onResume}>
-              {START.continue(resume.site ?? 'moon', SITES[resume.site ?? 'moon'].dayWord, resume.day)}
-            </button>
-            <p>{START.crewWaiting(resume.crewName)}</p>
-          </div>
-        )}
+        {resume && <p className="start-waiting">{START.crewWaiting(resume.crewName)}</p>}
 
         <form className="start-form" onSubmit={start}>
           <div role="radiogroup" aria-labelledby="site-picker-label" className="site-picker">
@@ -162,9 +155,16 @@ export function StartScreen({
               {name.length}/{CREW_NAME_MAX}
             </span>
           </p>
-          <button type="submit" className={`btn btn-large start-button ${resume ? 'btn-secondary' : 'btn-primary'}`}>
-            {resume ? START.newMission : START.start}
-          </button>
+          <div className="start-bar">
+            {resume && (
+              <button type="button" className="btn btn-primary btn-large start-button" onClick={resume.onResume}>
+                {START.continue(resume.site ?? 'moon', SITES[resume.site ?? 'moon'].dayWord, resume.day)}
+              </button>
+            )}
+            <button type="submit" className={`btn btn-large start-button ${resume ? 'btn-secondary' : 'btn-primary'}`}>
+              {resume ? START.newMission : START.start}
+            </button>
+          </div>
         </form>
       </div>
       <MoonBaseArt />

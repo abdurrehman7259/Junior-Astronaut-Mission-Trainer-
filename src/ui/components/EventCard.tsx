@@ -3,7 +3,7 @@ import { isStubEvent } from '../../app/stub-events';
 import type { Severity, SolarEvent, SolarEventKind } from '../../shared/types';
 import { EVENT, EVENT_EXTRA, type DayWord } from '../content/copy';
 import { GlossaryTerm } from './GlossaryTerm';
-import { BoltIcon, CheckIcon, InfoIcon, SunIcon } from './icons';
+import { BoltIcon, CheckIcon, InfoIcon, SunIcon, WarningIcon } from './icons';
 import './EventCard.css';
 
 export interface EventCardProps {
@@ -59,6 +59,7 @@ export function EventCard({ event, day, kidText, dayWord = 'day' }: EventCardPro
   const [showDetails, setShowDetails] = useState(false);
   const stub = isStubEvent(event);
   const detail = detailOf(event);
+  const storm = !stub && event.kind !== 'QUIET';
   const badge = stub ? EVENT.badgePlaceholder : event.kind === 'QUIET' ? EVENT.badgeCalm(dayWord) : EVENT.badgeStorm;
 
   return (
@@ -68,8 +69,8 @@ export function EventCard({ event, day, kidText, dayWord = 'day' }: EventCardPro
           <SunIcon className="event-card-title-icon" />
           <span>{EVENT.title(dayWord, day)}</span>
         </h2>
-        <p className={`event-badge ${stub ? 'is-stub' : 'is-real'}`}>
-          {stub ? <InfoIcon size={20} /> : <CheckIcon size={20} />}
+        <p className={`event-badge ${stub ? 'is-stub' : storm ? 'is-storm' : 'is-real'}`}>
+          {stub ? <InfoIcon size={20} /> : storm ? <WarningIcon size={20} /> : <CheckIcon size={20} />}
           <span>{badge}</span>
         </p>
       </div>

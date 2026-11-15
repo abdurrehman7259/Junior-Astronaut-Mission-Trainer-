@@ -67,6 +67,7 @@ export function MissionScreen({
           ) : (
             <EventCard event={event} day={game.day} kidText={isStubEvent(event) ? undefined : kidTextFor(event)} />
           )}
+          <div className="mission-after">
           <Meters
             meters={game.meters}
             scienceScore={game.scienceScore}
@@ -94,6 +95,7 @@ export function MissionScreen({
               </ul>
             </div>
           )}
+          </div>
         </div>
         <div className="mission-col mission-col-right">
           <PowerAllocator
@@ -102,6 +104,7 @@ export function MissionScreen({
             onConfirm={onConfirm}
             day={game.day}
             site={site}
+            batteryWillEmpty={preview ? preview.after.power === 0 : false}
           />
         </div>
       </div>

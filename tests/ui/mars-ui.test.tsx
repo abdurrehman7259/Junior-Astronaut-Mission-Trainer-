@@ -285,3 +285,25 @@ describe('App, Mars mission', () => {
     expect(await screen.findByRole('button', { name: 'Play again' })).toBeInTheDocument();
   }, 30_000);
 });
+
+describe('Mission screen layout and warnings (usability round 2)', () => {
+  it('shows the battery warning only when the preview empties the battery', () => {
+    const game = marsGame();
+    const lowGame = { ...game, meters: { ...game.meters, power: 5 } };
+    const { unmount } = renderMission(lowGame, { site: 'mars', marsSite: SITE, allocation: { life: 0, shield: 5, science: 5 }, preview: engine.previewTurn(lowGame, { life: 0, shield: 5, science: 5 }) });
+    expect(screen.getByText(/This plan empties the battery/)).toBeInTheDocument();
+    unmount();
+    renderMission(game, { site: 'mars', marsSite: SITE, preview: null });
+    expect(screen.queryByText(/This plan empties the battery/)).toBeNull();
+  });
+
+  it('keeps weather first, then allocator, then Start in DOM order; meters sit in a block that CSS orders after the allocator', () => {
+    const { container } = renderMission(marsGame(), { site: 'mars', marsSite: SITE });
+    const step1 = screen.getByRole('heading', { name: '1. Check the message from Earth' });
+    const step2 = screen.getByRole('heading', { name: '2. Share your 10 power' });
+    const start = screen.getByRole('button', { name: /Start sol/ });
+    expect(step1.compareDocumentPosition(step2) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(step2.compareDocumentPosition(start) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector('.mission-col-left > .mission-after')).not.toBeNull();
+  });
+});

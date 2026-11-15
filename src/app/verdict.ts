@@ -9,13 +9,23 @@ import type { VerdictKind } from '../ui/content/copy';
 export const AIR_MIN_UNITS = 4;
 /** Received radiation at or above this counts as "hurt" (game units). Below it, shields blocked most. */
 export const HURT_THRESHOLD = 10;
+/** Battery at or below this after a day gets a warning before it runs out (cold-start test: it drained silently). */
+export const BATTERY_LOW = 20;
+
+/** Shields were really too low: much got through AND they blocked less than got through. */
+function shieldsTooLow(r: TurnResult): boolean {
+  return r.dose.received >= HURT_THRESHOLD && r.dose.blocked < r.dose.received;
+}
 
 export function verdictFor(r: TurnResult, _site: SiteId = 'moon'): VerdictKind {
   const storm = r.dose.incoming > 0;
   if (r.statusAfter === 'ended') return r.after.crewHealth <= 0 ? 'lostCrew' : 'lostAir';
-  if (storm && r.dose.received >= HURT_THRESHOLD) return 'hurt';
-  if (r.allocation.life < AIR_MIN_UNITS) return 'airLow';
+  // An empty battery weakens shields, so blame the battery, not the shield choice (cold-start finding 1).
   if (r.after.power === 0) return 'batteryEmpty';
+  if (storm && shieldsTooLow(r)) return 'hurt';
+  if (storm && r.dose.received >= HURT_THRESHOLD) return 'bigStorm';
+  if (r.allocation.life < AIR_MIN_UNITS) return 'airLow';
+  if (r.after.power <= BATTERY_LOW) return 'batteryLow';
   if (storm) return r.dose.received === 0 ? 'blocked' : 'mostlyBlocked';
   if (r.allocation.shield > 0) return 'shieldsWasted';
   return r.allocation.science > 0 ? 'calmScience' : 'calmNoScience';
@@ -23,7 +33,7 @@ export function verdictFor(r: TurnResult, _site: SiteId = 'moon'): VerdictKind {
 
 export type MeterLineKind =
   | { meter: 'battery'; kind: 'empty' | 'down' | 'up' | 'same' }
-  | { meter: 'air'; kind: 'short' | 'down' | 'up' | 'same'; units: number }
+  | { meter: 'air'; kind: 'short' | 'shortDown' | 'down' | 'up' | 'same'; units: number }
   | { meter: 'crew'; kind: 'hurt' | 'safe' | 'calm'; blocked: number; received: number }
   | { meter: 'science'; kind: 'points' | 'none'; points: number };
 
@@ -37,7 +47,16 @@ export function meterLinesFor(r: TurnResult): MeterLineKind[] {
   };
   const air: MeterLineKind = {
     meter: 'air',
-    kind: r.allocation.life < AIR_MIN_UNITS ? 'short' : da < 0 ? 'down' : da > 0 ? 'up' : 'same',
+    kind:
+      r.allocation.life < AIR_MIN_UNITS
+        ? da < 0
+          ? 'shortDown'
+          : 'short'
+        : da < 0
+          ? 'down'
+          : da > 0
+            ? 'up'
+            : 'same',
     units: r.allocation.life,
   };
   const crew: MeterLineKind = {
@@ -55,7 +74,7 @@ export function meterLinesFor(r: TurnResult): MeterLineKind[] {
 }
 
 /** The end-screen "What you learned" line: one lesson from the played days. */
-export type LessonKind = 'air' | 'storm' | 'calm' | 'mars' | 'good';
+export type LessonKind = 'air' | 'storm' | 'battery' | 'calm' | 'mars' | 'good';
 export function lessonFor(history: TurnResult[], site: SiteId): LessonKind {
   const last = history.at(-1);
   // A mission lost on air teaches air first, not shields (ux-audit: the old tip blamed shielding).
@@ -63,6 +82,8 @@ export function lessonFor(history: TurnResult[], site: SiteId): LessonKind {
   if (history.some((r) => r.allocation.life < AIR_MIN_UNITS) && !history.some((r) => r.dose.received >= HURT_THRESHOLD)) {
     return 'air';
   }
+  if (history.some((r) => r.after.power > 0 && shieldsTooLow(r))) return site === 'mars' ? 'mars' : 'storm';
+  if (history.some((r) => r.after.power === 0)) return 'battery';
   if (history.some((r) => r.dose.received >= HURT_THRESHOLD)) return site === 'mars' ? 'mars' : 'storm';
   const calm = history.filter((r) => r.dose.incoming === 0);
   const wasted = calm.filter((r) => r.allocation.science === 0).length;

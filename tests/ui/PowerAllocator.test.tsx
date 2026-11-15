@@ -57,6 +57,50 @@ function sum(a: Allocation) {
   return a.life + a.shield + a.science;
 }
 
+describe('PowerAllocator warnings', () => {
+  const warnings = () => document.querySelector('.pa-warnings') as HTMLElement;
+
+  it('has a polite status region that is empty when nothing is wrong', () => {
+    setup(BALANCED);
+    expect(warnings()).toHaveAttribute('role', 'status');
+    expect(warnings()).toHaveAttribute('aria-live', 'polite');
+    expect(warnings()).toBeEmptyDOMElement();
+  });
+
+  it('does not warn about air before anything is shared', () => {
+    setup(EMPTY);
+    expect(screen.queryByText(DAY.airWarning)).toBeNull();
+  });
+
+  it('warns (icon + text) when Air & food has less than 4 and some power is shared', async () => {
+    const { user } = setup(EMPTY);
+    await user.click(plus(SHIELDS));
+    const msg = screen.getByText(DAY.airWarning);
+    expect(warnings()).toContainElement(msg);
+    expect(msg.parentElement!.querySelector('svg')).not.toBeNull();
+    await user.click(plus(AIR));
+    await user.click(plus(AIR));
+    await user.click(plus(AIR));
+    expect(screen.getByText(DAY.airWarning)).toBeInTheDocument();
+    await user.click(plus(AIR));
+    expect(screen.queryByText(DAY.airWarning)).toBeNull();
+  });
+
+  it('shows the battery warning only when the parent says the battery will empty', () => {
+    const { rerender } = render(
+      <PowerAllocator value={BALANCED} onChange={() => {}} onConfirm={() => {}} day={3} />,
+    );
+    expect(screen.queryByText(DAY.batteryWarning)).toBeNull();
+    rerender(
+      <PowerAllocator value={BALANCED} onChange={() => {}} onConfirm={() => {}} day={3} batteryWillEmpty />,
+    );
+    const msg = screen.getByText(DAY.batteryWarning);
+    expect(warnings()).toContainElement(msg);
+    expect(msg.parentElement!.querySelector('svg')).not.toBeNull();
+    expect(screen.queryByText(DAY.airWarning)).toBeNull();
+  });
+});
+
 describe('allocation helpers', () => {
   const d: Allocation = { life: 2, shield: 1, science: 0 };
 

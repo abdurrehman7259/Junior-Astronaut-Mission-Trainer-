@@ -52,6 +52,13 @@
   padding-left: 1.25rem;
 }
 
+.mission-after {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .mission-col {
   min-width: 0;
   display: flex;
@@ -78,6 +85,16 @@
   }
   .mission-col-left > * {
     min-width: 0;
+  }
+  /* Visual order on narrow screens: 1 weather, 2 power controls, then the meters; the Start bar stays last (sticky). */
+  .mission-col-left > .mission-after {
+    order: 2;
+  }
+  .mission-col-right > .pa {
+    order: 1;
+  }
+  .mission-col-right > .pa-start {
+    order: 3;
   }
 }
 

@@ -69,9 +69,9 @@ const GENERIC_FLARE: readonly string[] = [
 ];
 
 const CME_WITH_SPEED: readonly ((days: number) => string)[] = [
-  (d) => `A rough guess: this cloud needs ${daysPhrase(d)} to reach the Moon. Strong shields help your crew.`,
+  (d) => `A rough guess: this cloud needs ${daysPhrase(d)} to reach the Moon. In this game, it hits today.`,
   (d) => `This Sun cloud would take ${daysPhrase(d)} to reach the Moon. In this game it hits your base, so shield up!`,
-  (d) => `Huge Sun cloud! A rough estimate: ${daysPhrase(d)} to reach the Moon, so shield up.`,
+  (d) => `This huge cloud would need ${daysPhrase(d)} to reach the Moon. In this game, it hits today!`,
 ];
 
 const CME_NO_SPEED: readonly string[] = [

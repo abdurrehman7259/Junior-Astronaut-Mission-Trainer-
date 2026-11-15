@@ -137,3 +137,25 @@ describe('StartScreen', () => {
     expect(cards()[0]!.querySelector('.site-dot')).not.toBeNull();
   });
 });
+
+describe('StartScreen sticky bar', () => {
+  it('puts the Start button in the bar after the crew-name field (tab order)', () => {
+    const { container } = render(<StartScreen onStart={() => {}} />);
+    const bar = container.querySelector('.start-bar')!;
+    const input = screen.getByLabelText('Crew name (optional)');
+    const button = screen.getByRole('button', { name: 'Start mission' });
+    expect(bar).toContainElement(button);
+    expect(input.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps Continue and New mission together in the bar, after the crew-name field', () => {
+    const { container } = render(<StartScreen onStart={() => {}} resume={{ day: 2, crewName: 'Nova', onResume: () => {} }} />);
+    const bar = container.querySelector('.start-bar')!;
+    const input = screen.getByLabelText('Crew name (optional)');
+    for (const name of ['Continue mission (Day 2)', 'New mission']) {
+      const b = screen.getByRole('button', { name });
+      expect(bar).toContainElement(b);
+      expect(input.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+});

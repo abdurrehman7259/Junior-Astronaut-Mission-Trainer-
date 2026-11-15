@@ -12,8 +12,9 @@ import {
   setUnits,
   type Draft,
 } from './allocation';
+import { AIR_MIN_UNITS } from '../../app/verdict';
 import { GlossaryTerm } from './GlossaryTerm';
-import { FlaskIcon, LeafIcon, ShieldIcon, type IconProps } from './icons';
+import { BatteryIcon, FlaskIcon, LeafIcon, ShieldIcon, WarningIcon, type IconProps } from './icons';
 import './PowerAllocator.css';
 
 export interface PowerAllocatorProps {
@@ -27,6 +28,8 @@ export interface PowerAllocatorProps {
   disabled?: boolean;
   /** Only changes the words ("day" or "sol"). Default "moon". */
   site?: SiteId;
+  /** True when the plan would leave the battery at 0. Shows a warning under the sliders. */
+  batteryWillEmpty?: boolean;
 }
 
 interface SystemInfo {
@@ -66,6 +69,7 @@ export function PowerAllocator({
   day,
   disabled = false,
   site = 'moon',
+  batteryWillEmpty = false,
 }: PowerAllocatorProps): JSX.Element {
   const dayWord = site === 'mars' ? 'sol' : 'day';
   const sliderRefs = useRef<Partial<Record<SystemKey, HTMLInputElement | null>>>({});
@@ -84,6 +88,7 @@ export function PowerAllocator({
 
   const startHint = site === 'mars' ? DAY.startHintMars : DAY.startHint;
   const hintShown = !complete;
+  const airWarning = value.life < AIR_MIN_UNITS && pool < POWER_UNITS_PER_DAY;
 
   return (
     <>
@@ -157,6 +162,21 @@ export function PowerAllocator({
             );
           })}
         </ul>
+
+        <div className="pa-warnings" role="status" aria-live="polite">
+          {airWarning && (
+            <p className="pa-warning pa-warning-air">
+              <WarningIcon size={22} />
+              <span>{DAY.airWarning}</span>
+            </p>
+          )}
+          {batteryWillEmpty && (
+            <p className="pa-warning pa-warning-battery">
+              <BatteryIcon size={22} />
+              <span>{DAY.batteryWarning}</span>
+            </p>
+          )}
+        </div>
 
         <div className="pa-quick">
           <span className="pa-quick-label" id="pa-quick-label">

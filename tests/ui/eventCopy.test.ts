@@ -111,8 +111,8 @@ describe('kidTextFor on the Moon (kid words, no class numbers)', () => {
     'A medium flash from the Sun! Give your shield some power to help your crew.',
     'This small flare is a gentle burst of light from the Sun. Your base can relax a bit.',
     'This Sun cloud would take about 4 days to reach the Moon. In this game it hits your base, so shield up!',
-    'A rough guess: this cloud needs about 2 days to reach the Moon. Strong shields help your crew.',
-    'Huge Sun cloud! A rough estimate: about 1 day to reach the Moon, so shield up.',
+    'A rough guess: this cloud needs about 2 days to reach the Moon. In this game, it hits today.',
+    'This huge cloud would need about 1 day to reach the Moon. In this game, it hits today!',
     // Fact-check fix (D-028): DONKI logs notable events only, so say "no big flares".
     "NASA's records show no big flares or storm clouds this day. Great day for science!",
     'A giant cloud of Sun gas and magnetism is coming. Power your shield to be ready.',

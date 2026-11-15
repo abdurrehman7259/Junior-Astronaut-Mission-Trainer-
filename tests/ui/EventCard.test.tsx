@@ -47,6 +47,26 @@ const stub: SolarEvent = {
   sourceUrl: URL,
 };
 
+describe('EventCard badge', () => {
+  it('storm badge has a warning icon and the storm style, not the calm check', () => {
+    const { container, rerender } = render(<EventCard event={flare} day={1} />);
+    const storm = container.querySelector('.event-badge')!;
+    expect(storm).toHaveTextContent('Real storm from NASA');
+    expect(storm).toHaveClass('is-storm');
+    expect(storm).not.toHaveClass('is-real');
+    expect(storm.querySelector('svg')).not.toBeNull();
+    rerender(<EventCard event={cme} day={1} />);
+    expect(container.querySelector('.event-badge')).toHaveClass('is-storm');
+    const stormSvg = container.querySelector('.event-badge svg')!.innerHTML;
+    rerender(<EventCard event={quiet} day={1} />);
+    const calm = container.querySelector('.event-badge')!;
+    expect(calm).toHaveClass('is-real');
+    expect(calm).not.toHaveClass('is-storm');
+    expect(calm).toHaveTextContent('Calm day (real NASA date)');
+    expect(calm.querySelector('svg')!.innerHTML).not.toBe(stormSvg);
+  });
+});
+
 describe('EventCard', () => {
   it('has an h2 header naming the day, and a labelled region', () => {
     render(<EventCard event={flare} day={4} />);

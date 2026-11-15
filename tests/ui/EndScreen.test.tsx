@@ -72,9 +72,9 @@ describe('EndScreen', () => {
       screen.getByRole('heading', { level: 1 }),
       screen.getByText('Science ★ 42'),
       screen.getByRole('heading', { name: 'What you learned' }),
+      screen.getByRole('button', { name: 'Play again' }),
       screen.getByRole('heading', { name: 'What really happened' }),
       screen.getByRole('heading', { name: 'Real NASA science' }),
-      screen.getByRole('button', { name: 'Play again' }),
     ];
     for (let i = 1; i < order.length; i += 1) {
       expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -85,19 +85,52 @@ describe('EndScreen', () => {
   it('lost by crew health: says radiation hurt the crew', () => {
     const last = { ...turn(3, real(12, 'CME', 3), 0, 3, -20), after: { ...m, crewHealth: 0 }, statusAfter: 'ended' as const };
     render(<EndScreen game={game([hist[0]!, last], 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Mission over. The crew flies home safely.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Mission over on day 2.' })).toBeInTheDocument();
     expect(
-      screen.getByText('Storm radiation hurt the crew too much. Try more shields on storm days.'),
+      screen.getByText('Crew health reached 0. Storm radiation hurt the crew too much.'),
     ).toBeInTheDocument();
+    expect(screen.getByText('Mission Control flew the crew home safely.')).toBeInTheDocument();
     expect(screen.queryByText(/Air & food ran out/)).toBeNull();
   });
 
   it('lost by air: says air and food ran out, with the air lesson', () => {
     const last = { ...turn(2, real(11, 'QUIET', 0), 3, 3), after: { ...m, lifeSupport: 0 }, statusAfter: 'ended' as const };
     render(<EndScreen game={game([hist[0]!, last], 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
-    expect(screen.getByText('Air & food ran out. Give it at least 4 power every day.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Mission over on day 2.' })).toBeInTheDocument();
+    expect(screen.getByText('Air & food reached 0. It needs at least 4 power every day.')).toBeInTheDocument();
     expect(screen.queryByText(/Storm radiation hurt/)).toBeNull();
     expect(screen.getByText('Air & food needs at least 4 power every day.')).toBeInTheDocument();
+  });
+
+  it('lost title names the day or sol, then the why line, then the rescue line', () => {
+    const last = { ...turn(3, real(12, 'CME', 3), 0, 3, -20), after: { ...m, crewHealth: 0 }, statusAfter: 'ended' as const };
+    const hh = [hist[0]!, hist[1]!, last];
+    const { unmount } = render(<EndScreen game={game(hh, 'ended')} crewName="Nova" onPlayAgain={() => {}} />);
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Mission over on day 3.' });
+    const why = screen.getByText('Crew health reached 0. Storm radiation hurt the crew too much.');
+    const rescue = screen.getByText('Mission Control flew the crew home safely.');
+    expect(h1.compareDocumentPosition(why) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(why.compareDocumentPosition(rescue) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    unmount();
+    render(<EndScreen game={game(hh, 'ended', 'mars')} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Mission over on sol 3.' })).toBeInTheDocument();
+  });
+
+  it('won has no rescue line, and exactly one Play again button right after the lesson', () => {
+    render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.queryByText('Mission Control flew the crew home safely.')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Play again' })).toHaveLength(1);
+    const lesson = screen.getByRole('heading', { name: 'What you learned' });
+    const again = screen.getByRole('button', { name: 'Play again' });
+    const timeline = screen.getByRole('heading', { name: 'What really happened' });
+    expect(lesson.compareDocumentPosition(again) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(again.compareDocumentPosition(timeline) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('shows the battery lesson when the battery ran out', () => {
+    const empty = { ...turn(1, real(5, 'QUIET', 0), 0, 6), after: { ...m, power: 0 } };
+    render(<EndScreen game={game([empty])} crewName="Nova" onPlayAgain={() => {}} />);
+    expect(screen.getByText('Watch the battery. Shields and science drain it; Air & food does not.')).toBeInTheDocument();
   });
 
   it('Mars: uses sol wording', () => {

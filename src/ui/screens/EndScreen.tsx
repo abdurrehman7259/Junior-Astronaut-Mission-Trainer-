@@ -23,6 +23,7 @@ const LEARN_TEXT: Record<LessonKind, string> = {
   storm: END.learnStorm,
   calm: END.learnCalm,
   mars: END.learnMars,
+  battery: END.learnBattery,
   good: END.learnGood,
 };
 
@@ -56,8 +57,9 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
   return (
     <section className="end-screen">
       <div className="end-summary stack">
-        <ScreenHeading>{won ? END.wonTitle : END.lostTitle}</ScreenHeading>
+        <ScreenHeading>{won ? END.wonTitle : END.lostTitleOn(dayWord, game.history.length)}</ScreenHeading>
         <p className="end-outcome">{why}</p>
+        {!won && <p className="end-rescue">{END.lostRescue}</p>}
 
         <div className="card stack end-score-card">
           <p className="end-score">
@@ -74,6 +76,13 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
         <div className="card stack">
           <h2>{END.learnedTitle}</h2>
           <p className="debrief-tip">{LEARN_TEXT[lessonFor(game.history, site)]}</p>
+        </div>
+
+        <div className="stack end-actions">
+          <button type="button" className="btn btn-primary btn-large" onClick={onPlayAgain}>
+            {END.playAgain}
+          </button>
+          <p className="debrief-meta">{END.playAgainNote}</p>
         </div>
       </div>
 
@@ -125,13 +134,6 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
           </a>
         </div>
       )}
-
-      <div className="stack end-actions">
-        <button type="button" className="btn btn-primary btn-large" onClick={onPlayAgain}>
-          {END.playAgain}
-        </button>
-        <p className="debrief-meta">{END.playAgainNote}</p>
-      </div>
     </section>
   );
 }

@@ -53,16 +53,16 @@ describe('HowToPlay', () => {
     expect(screen.getByText('Card 3 of 3')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Next' })).not.toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole('button', { name: 'Start day 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Got it!' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('Mars card 3 mentions sol and the last button says Start sol 1', () => {
+  it('Mars card 3 mentions sol and the last button says Got it!', () => {
     setup('mars');
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(screen.getByText(/A sol is one Mars day/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start sol 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Got it!' })).toBeInTheDocument();
   });
 
   it('Esc (cancel) closes it', () => {

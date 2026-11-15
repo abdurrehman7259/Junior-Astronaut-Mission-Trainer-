@@ -108,7 +108,44 @@ describe('ResolutionScreen', () => {
           after: { power: 0, lifeSupport: 70, crewHealth: 90 },
         }),
       );
-      expect(screen.getByText('The battery ran out! Use less power on shields and science.')).toBeInTheDocument();
+      expect(
+        screen.getByText('The battery ran out, so shields were weak. Give Air & food more power.'),
+      ).toBeInTheDocument();
+    });
+
+    it('battery empty beats hurt on a storm day', () => {
+      show(
+        makeResult({
+          dose: { incoming: 30, blocked: 0, received: 30 },
+          before: { power: 10, lifeSupport: 70, crewHealth: 90 },
+          after: { power: 0, lifeSupport: 70, crewHealth: 60 },
+        }),
+      );
+      expect(screen.getByText(/The battery ran out, so shields were weak/)).toBeInTheDocument();
+      expect(screen.queryByText(/Ouch, low shields/)).toBeNull();
+    });
+
+    it('battery low: warns before it runs out, bad tone', () => {
+      const { container } = show(
+        makeResult({
+          dose: noDose,
+          allocation: { life: 4, shield: 0, science: 6 },
+          before: { power: 31, lifeSupport: 70, crewHealth: 90 },
+          after: { power: 18, lifeSupport: 70, crewHealth: 90 },
+        }),
+      );
+      expect(
+        screen.getByText('Battery is low! Put more power into Air & food so it can recharge.'),
+      ).toBeInTheDocument();
+      expect(container.querySelector('.res-verdict-bad')).not.toBeNull();
+      expect(screen.getByText('Problem')).toBeInTheDocument();
+    });
+
+    it('big storm: shields blocked most of it, okay tone with a word', () => {
+      const { container } = show(makeResult({ dose: { incoming: 30, blocked: 15, received: 15 } }));
+      expect(screen.getByText('A big storm! Your shields blocked most of it.')).toBeInTheDocument();
+      expect(container.querySelector('.res-verdict-ok')).not.toBeNull();
+      expect(screen.getByText('Okay')).toBeInTheDocument();
     });
 
     it('loss: crew and air', () => {
@@ -128,6 +165,25 @@ describe('ResolutionScreen', () => {
   });
 
   describe('meter lines', () => {
+    it("air 'shortDown': says air dropped and drops again tomorrow (today when final)", () => {
+      const short = makeResult({
+        dose: noDose,
+        allocation: { life: 0, shield: 5, science: 5 },
+        before: { power: 80, lifeSupport: 80, crewHealth: 90 },
+        after: { power: 72, lifeSupport: 40, crewHealth: 90 },
+      });
+      const { unmount } = show(short);
+      expect(screen.getByText('Air dropped. Only 0 power for air, so it drops again tomorrow.')).toBeInTheDocument();
+      unmount();
+      show(short, { site: 'mars' });
+      expect(screen.getByText('Air dropped. Only 0 power for air, so it drops again next sol.')).toBeInTheDocument();
+    });
+
+    it("air 'short' (not yet dropped) keeps the first-day line", () => {
+      show(makeResult({ dose: noDose, allocation: { life: 2, shield: 4, science: 4 } }));
+      expect(screen.getByText('Only 2 power for air. Air drops tomorrow.')).toBeInTheDocument();
+    });
+
     it('lists the four meters in order with new names', () => {
       show(makeResult());
       const labels = screen
@@ -247,6 +303,14 @@ describe('ResolutionScreen', () => {
     rerender(<ResolutionScreen result={makeResult({ statusAfter: 'won' })} isFinal onContinue={() => {}} />);
     expect(screen.getByRole('button', { name: 'See how the mission went' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Go to day 4' })).not.toBeInTheDocument();
+  });
+
+  it('puts the next button in the sticky action bar, on the Moon and on Mars', () => {
+    const { container, unmount } = show(makeResult());
+    expect(container.querySelector('.res-actions')).toContainElement(screen.getByRole('button', { name: 'Go to day 4' }));
+    unmount();
+    const r = show(makeResult(), { site: 'mars' });
+    expect(r.container.querySelector('.res-actions')).toContainElement(screen.getByRole('button', { name: 'Go to sol 4' }));
   });
 
   it('calls onContinue when the button is pressed', async () => {

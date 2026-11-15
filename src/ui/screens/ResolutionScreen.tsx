@@ -107,7 +107,9 @@ function lineText(line: MeterLineKind, dayWord: DayWord, isFinal: boolean): { te
         text:
           line.kind === 'short'
             ? REPORT_LINES.airShort(line.units, REPORT_MORE.airWhen(dayWord, isFinal))
-            : { down: REPORT_LINES.airDown, up: REPORT_LINES.airUp, same: REPORT_LINES.airSame }[line.kind],
+            : line.kind === 'shortDown'
+              ? REPORT_LINES.airShortDown(line.units, REPORT_MORE.airWhen(dayWord, isFinal))
+              : { down: REPORT_LINES.airDown, up: REPORT_LINES.airUp, same: REPORT_LINES.airSame }[line.kind],
       };
     case 'crew':
       return line.kind === 'hurt'

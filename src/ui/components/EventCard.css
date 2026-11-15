@@ -37,6 +37,12 @@
 .event-badge.is-real {
   color: var(--color-ok);
 }
+/* Storm: filled warning colour, so it never looks like the calm (outlined green) badge. */
+.event-badge.is-storm {
+  color: var(--color-on-accent);
+  background: var(--color-warning);
+  border-color: var(--color-warning);
+}
 .event-badge.is-stub {
   color: var(--color-warning);
 }

@@ -21,7 +21,7 @@ export const NAMES = {
 
 /** One-line rules shown with each system or meter. */
 export const RULE_LINES = {
-  battery: 'Shields and science use battery. The battery recharges a little each day.',
+  battery: 'Shields and science use battery. Air & food uses none. It recharges a little each day.',
   air: 'Air, water and food. Give it at least 4 power a day.',
   shield: 'Blocks radiation from solar storms.',
   science: 'Earns science points. Points help you win.',
@@ -50,7 +50,7 @@ export const INTRO = {
   skip: 'Skip',
   next: 'Next',
   back: 'Back',
-  done: (dayWord: DayWord) => `Start ${dayWord} 1`,
+  done: (_dayWord: DayWord) => 'Got it!',
   close: 'Close',
   step: (n: number, total: number) => `Card ${n} of ${total}`,
   cards: (site: SiteId): IntroCard[] => [
@@ -114,6 +114,10 @@ export const DAY = {
   startButton: (dayWord: DayWord, day: number) => `Start ${dayWord} ${day}`,
   startHint: 'Share all 10 power to start the day.',
   startHintMars: 'Share all 10 power to start the sol.',
+  /** Shown under the allocator when Air & food has fewer than 4 power. */
+  airWarning: 'Air & food needs at least 4 power, or air drops.',
+  /** Shown when the battery will be empty after this plan. */
+  batteryWarning: 'This plan empties the battery. Give Air & food more power.',
   presetsLabel: 'Quick plans (optional):',
   presets: {
     balanced: 'Balanced',
@@ -177,6 +181,8 @@ export type VerdictKind =
   | 'hurt'
   | 'airLow'
   | 'batteryEmpty'
+  | 'batteryLow'
+  | 'bigStorm'
   | 'blocked'
   | 'mostlyBlocked'
   | 'shieldsWasted'
@@ -188,7 +194,9 @@ export const VERDICT_TEXT: Record<VerdictKind, (dayWord: DayWord) => string> = {
   lostAir: () => 'Oh no! Air & food ran out.',
   hurt: () => 'Ouch, low shields. Your crew got hurt by the storm.',
   airLow: () => 'Air was low. Give Air & food at least 4 power.',
-  batteryEmpty: () => 'The battery ran out! Use less power on shields and science.',
+  batteryEmpty: () => 'The battery ran out, so shields were weak. Give Air & food more power.',
+  batteryLow: () => 'Battery is low! Put more power into Air & food so it can recharge.',
+  bigStorm: () => 'A big storm! Your shields blocked most of it.',
   blocked: () => 'Great call! Your shields stopped the storm.',
   mostlyBlocked: () => 'Good call! Your shields blocked most of the storm.',
   shieldsWasted: (w) =>
@@ -205,6 +213,8 @@ export const VERDICT_TONE: Record<VerdictKind, VerdictTone> = {
   hurt: 'bad',
   airLow: 'bad',
   batteryEmpty: 'bad',
+  batteryLow: 'bad',
+  bigStorm: 'ok',
   blocked: 'good',
   mostlyBlocked: 'good',
   shieldsWasted: 'ok',
@@ -229,6 +239,8 @@ export const REPORT_LINES = {
   batterySame: 'You used what the Sun added.',
   airShort: (units: number, next: string) =>
     `Only ${units} power for air. Air drops ${next}.`,
+  airShortDown: (units: number, next: string) =>
+    `Air dropped. Only ${units} power for air, so it drops again ${next}.`,
   airDown: 'Air dropped because of an earlier shortage.',
   airUp: 'Extra power topped up the air.',
   airSame: 'Enough power kept the air steady.',
@@ -250,16 +262,19 @@ export const LIVE = {
 // ---------- End screen (P8) ----------
 export const END = {
   wonTitle: 'You made it!',
-  lostTitle: 'Mission over. The crew flies home safely.',
+  lostTitle: 'Mission over.',
+  lostTitleOn: (dayWord: DayWord, day: number) => `Mission over on ${dayWord} ${day}.`,
+  lostRescue: 'Mission Control flew the crew home safely.',
   wonWhy: (crew: string, days: number, dayWord: DayWord) =>
     `Crew ${crew} stayed safe for all ${days} ${dayWord}s.`,
-  lostWhyCrew: 'Storm radiation hurt the crew too much. Try more shields on storm days.',
-  lostWhyAir: 'Air & food ran out. Give it at least 4 power every day.',
+  lostWhyCrew: 'Crew health reached 0. Storm radiation hurt the crew too much.',
+  lostWhyAir: 'Air & food reached 0. It needs at least 4 power every day.',
   scoreLabel: 'Science score',
   learnedTitle: 'What you learned',
   learnStorm: 'More shields on big storm days protect your crew.',
   learnCalm: 'Calm days are great for science.',
-  learnMars: 'Far from Earth, warnings come late, so plan ahead.',
+  learnMars: 'On Mars, storm news comes late. Keep some shields up every sol.',
+  learnBattery: 'Watch the battery. Shields and science drain it; Air & food does not.',
   learnGood: 'You balanced safety and science. Great work!',
   learnAir: 'Air & food needs at least 4 power every day.',
   timelineTitle: 'What really happened',

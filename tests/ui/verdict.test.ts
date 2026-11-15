@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { RULES } from '../../src/engine/rules';
 import {
   AIR_MIN_UNITS,
+  BATTERY_LOW,
   HURT_THRESHOLD,
   lessonFor,
   lossReason,
@@ -52,13 +53,35 @@ describe('verdictFor', () => {
       'lostAir',
     );
   });
-  it('hurt at the threshold, mostly blocked just under it', () => {
-    expect(verdictFor(r({ dose: { incoming: 30, blocked: 30 - HURT_THRESHOLD, received: HURT_THRESHOLD } }))).toBe(
+  it('hurt only when shields blocked less than got through and at least 10 got through', () => {
+    expect(verdictFor(r({ dose: { incoming: 30, blocked: 30 - 2 * HURT_THRESHOLD, received: 2 * HURT_THRESHOLD } }))).toBe(
       'hurt',
     );
+    expect(verdictFor(r({ dose: { incoming: 20, blocked: 5, received: HURT_THRESHOLD } }))).toBe('hurt');
     expect(
       verdictFor(r({ dose: { incoming: 30, blocked: 31 - HURT_THRESHOLD, received: HURT_THRESHOLD - 1 } })),
     ).toBe('mostlyBlocked');
+  });
+  it('bigStorm when 10 or more got through but shields blocked at least as much', () => {
+    expect(verdictFor(r({ dose: { incoming: 30, blocked: 15, received: 15 } }))).toBe('bigStorm');
+    expect(verdictFor(r({ dose: { incoming: 40, blocked: 30, received: HURT_THRESHOLD } }))).toBe('bigStorm');
+  });
+  it('battery empty beats hurt', () => {
+    expect(
+      verdictFor(
+        r({ dose: { incoming: 30, blocked: 0, received: 30 }, after: { power: 0, lifeSupport: 70, crewHealth: 60 } }),
+      ),
+    ).toBe('batteryEmpty');
+  });
+  it('batteryLow when the battery ends at 20 or less (and is not empty)', () => {
+    expect(BATTERY_LOW).toBe(20);
+    expect(verdictFor(r({ dose: calm, after: { power: BATTERY_LOW, lifeSupport: 70, crewHealth: 90 } }))).toBe(
+      'batteryLow',
+    );
+    expect(verdictFor(r({ dose: calm, after: { power: BATTERY_LOW + 1, lifeSupport: 70, crewHealth: 90 } }))).toBe(
+      'shieldsWasted',
+    );
+    expect(verdictFor(r({ after: { power: 10, lifeSupport: 70, crewHealth: 90 } }))).toBe('batteryLow');
   });
   it('blocked when nothing got through', () => {
     expect(verdictFor(r())).toBe('blocked');
@@ -92,6 +115,17 @@ describe('meterLinesFor', () => {
     expect(kind(50, 60)).toBe('up');
     expect(kind(50, 50)).toBe('same');
   });
+  it('air shortDown when air units are short and air already fell', () => {
+    const line = meterLinesFor(
+      r({
+        allocation: { life: 0, shield: 5, science: 5 },
+        before: { power: 80, lifeSupport: 80, crewHealth: 90 },
+        after: { power: 72, lifeSupport: 40, crewHealth: 90 },
+      }),
+    )[1];
+    expect(line).toMatchObject({ meter: 'air', kind: 'shortDown', units: 0 });
+    expect(meterLinesFor(r({ allocation: { life: 3, shield: 3, science: 4 } }))[1]).toMatchObject({ kind: 'short' });
+  });
   it('air short, and crew kinds', () => {
     const lines = meterLinesFor(
       r({ allocation: { life: 2, shield: 0, science: 8 }, dose: { incoming: 10, blocked: 4, received: 6 } }),
@@ -116,6 +150,11 @@ describe('lessonFor and lossReason', () => {
   it('calm lesson when most calm days had no science, else good', () => {
     expect(lessonFor([r({ dose: calm, allocation: { life: 10, shield: 0, science: 0 } })], 'moon')).toBe('calm');
     expect(lessonFor([r()], 'moon')).toBe('good');
+  });
+  it('battery lesson when the battery ran out and shields were not the cause', () => {
+    const empty = r({ dose: calm, after: { power: 0, lifeSupport: 70, crewHealth: 90 } });
+    expect(lessonFor([empty], 'moon')).toBe('battery');
+    expect(lessonFor([empty], 'mars')).toBe('battery');
   });
   it('loss reason', () => {
     expect(lossReason(r({ after: { power: 5, lifeSupport: 50, crewHealth: 0 } }))).toBe('crew');
