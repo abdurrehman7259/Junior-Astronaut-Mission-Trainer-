@@ -12,7 +12,7 @@ export default defineConfig({
     passWithNoTests: true,
     coverage: {
       provider: 'v8',
-      include: ['src/**', 'scripts/**', 'netlify/**'],
+      include: ['src/**', 'scripts/**'],
       reporter: ['text-summary', 'html'],
     },
     projects: [

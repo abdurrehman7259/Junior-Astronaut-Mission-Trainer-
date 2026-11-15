@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
+// D-040: the live banner calls NASA DONKI from the browser. Tests never depend on NASA being up:
+// the request is answered with an error, so the game shows its archived snapshot (honest fallback).
+test.beforeEach(async ({ page }) => {
+  await page.route('https://ccmc.gsfc.nasa.gov/**', (route) => route.fulfill({ status: 503, body: '[]' }));
+});
+
 test.setTimeout(120_000);
 
 type Site = 'moon' | 'mars';
@@ -147,7 +153,10 @@ test('Privacy: same-origin only, no cookies, mbc. storage', async ({ page, conte
   await playOut(page, 'moon');
   await expectEnd(page);
 
-  const external = urls.filter((u) => !u.startsWith('data:') && !u.startsWith('blob:') && new URL(u).origin !== 'http://localhost:4174');
+  // Only our host, plus NASA's DONKI API for the live banner (D-040).
+  const external = urls.filter(
+    (u) => !u.startsWith('data:') && !u.startsWith('blob:') && !['http://localhost:4174', 'https://ccmc.gsfc.nasa.gov'].includes(new URL(u).origin),
+  );
   expect(external).toEqual([]);
   expect(await context.cookies()).toHaveLength(0);
   const keys = await page.evaluate(() => Object.keys(localStorage));
@@ -170,11 +179,12 @@ test('Resume after reload', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Day 3 of 10' })).toBeVisible();
 });
 
-// A3 C4: the deployed CSP (netlify.toml) has no 'unsafe-eval'. Serve the page with that exact
+// A3 C4: the deployed CSP (vercel.json) has no 'unsafe-eval'. Serve the page with that exact
 // header and play a whole mission on each site; the browser must report no CSP violation.
 for (const site of ['moon', 'mars'] as const) {
-  test(`Strict netlify.toml CSP: no violations (${site})`, async ({ page }) => {
-    const csp = /Content-Security-Policy = "([^"]+)"/.exec(readFileSync('netlify.toml', 'utf8'))?.[1];
+  test(`Strict vercel.json CSP: no violations (${site})`, async ({ page }) => {
+    const vercel = JSON.parse(readFileSync('vercel.json', 'utf8')) as { headers: { source: string; headers: { key: string; value: string }[] }[] };
+    const csp = vercel.headers.find((h) => h.source === '/(.*)')?.headers.find((h) => h.key === 'Content-Security-Policy')?.value;
     expect(csp).toBeTruthy();
     await page.route('/', async (route) => {
       const res = await route.fetch();

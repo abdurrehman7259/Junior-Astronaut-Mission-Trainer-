@@ -1,25 +1,84 @@
 import { useEffect, useState } from 'react';
+import { mapCme, mapFlare } from '../shared/donki-map';
 import { LiveSpaceWeatherSchema } from '../shared/schemas';
-import type { LiveSpaceWeather } from '../shared/types';
+import type { LiveSpaceWeather, SolarEvent } from '../shared/types';
 import { isStubEvent } from './stub-events';
 
-export const LIVE_ENDPOINT = '/.netlify/functions/space-weather';
+/**
+ * Live space weather straight from NASA's keyless CCMC DONKI API (D-040: static hosting, no server function).
+ * The API sends `Access-Control-Allow-Origin: *`. Only these two fixed URLs are ever requested; nothing from
+ * the player goes into them. The CSP allows exactly this origin in connect-src.
+ */
+export const DONKI_ORIGIN = 'https://ccmc.gsfc.nasa.gov';
+export const DONKI_LIVE_BASE = `${DONKI_ORIGIN}/DONKI-API/get/`;
 export const LIVE_TIMEOUT_MS = 3000;
+/** Operational limits (security audit F1), not game rules. */
+export const LIVE_LIMIT_BYTES = 1_048_576;
+export const LIVE_RECORD_LIMIT = 1_000;
 
-/** Same-origin GET with a 3 s timeout. Never throws: any failure resolves { live: false }. */
-export async function fetchLiveSpaceWeather(signal?: AbortSignal): Promise<LiveSpaceWeather> {
+/** The two fixed request URLs for the 7 days up to `now` (UTC dates). */
+export function liveUrls(now: Date): { FLR: string; CME: string } {
+  const end = now.toISOString().slice(0, 10);
+  const startDay = new Date(now.getTime());
+  startDay.setUTCDate(startDay.getUTCDate() - 7);
+  const params = new URLSearchParams({ startDate: startDay.toISOString().slice(0, 10), endDate: end });
+  return { FLR: `${DONKI_LIVE_BASE}FLR?${params}`, CME: `${DONKI_LIVE_BASE}CME?${params}` };
+}
+
+/** Reads at most LIVE_LIMIT_BYTES of JSON; larger bodies are rejected. */
+async function readBoundedJson(res: Response): Promise<unknown> {
+  const length = res.headers.get('Content-Length');
+  if (length !== null && /^\d+$/.test(length) && Number(length) > LIVE_LIMIT_BYTES) throw new Error('too large');
+  const reader = res.body?.getReader();
+  if (!reader) return JSON.parse(await res.text()) as unknown;
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += value.byteLength;
+    if (received > LIVE_LIMIT_BYTES) {
+      void reader.cancel().catch(() => {});
+      throw new Error('too large');
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(received);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)) as unknown;
+}
+
+/** Both feeds within one 3 s deadline. Never throws: any failure resolves { live: false }. */
+export async function fetchLiveSpaceWeather(signal?: AbortSignal, now: Date = new Date()): Promise<LiveSpaceWeather> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), LIVE_TIMEOUT_MS);
   const onOuterAbort = () => controller.abort();
   signal?.addEventListener('abort', onOuterAbort);
-  try {
-    const res = await fetch(LIVE_ENDPOINT, {
+  const load = async (url: string): Promise<unknown[]> => {
+    const res = await fetch(url, {
       signal: controller.signal,
       credentials: 'omit',
+      redirect: 'error',
+      referrerPolicy: 'no-referrer',
       headers: { Accept: 'application/json' },
     });
-    if (!res.ok) return { live: false };
-    const parsed = LiveSpaceWeatherSchema.parse(await res.json());
+    if (!res.ok) throw new Error('upstream');
+    const body = await readBoundedJson(res);
+    if (!Array.isArray(body) || body.length > LIVE_RECORD_LIMIT) throw new Error('shape');
+    return body;
+  };
+  try {
+    // Inside the try: an invalid clock can never escape as a rejection (SEC-D-02).
+    const urls = liveUrls(now);
+    const [flares, cmes] = await Promise.all([load(urls.FLR), load(urls.CME)]);
+    const events = [...flares.map(mapFlare), ...cmes.map(mapCme)]
+      .filter((e): e is SolarEvent => e !== null)
+      .sort((a, b) => a.realDate.localeCompare(b.realDate) || a.id.localeCompare(b.id));
+    const parsed = LiveSpaceWeatherSchema.parse({ live: true, fetchedAt: now.toISOString(), events });
     if (parsed.live && parsed.events.some(isStubEvent)) return { live: false };
     return parsed;
   } catch {
@@ -27,6 +86,8 @@ export async function fetchLiveSpaceWeather(signal?: AbortSignal): Promise<LiveS
   } finally {
     clearTimeout(timer);
     signal?.removeEventListener('abort', onOuterAbort);
+    // If one feed failed early, cancel the other so nothing outlives the 3 s budget (SEC-D-01).
+    controller.abort();
   }
 }
 

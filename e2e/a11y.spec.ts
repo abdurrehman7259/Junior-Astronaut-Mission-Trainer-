@@ -1,5 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
+// D-040: the live banner calls NASA DONKI from the browser. Tests never depend on NASA being up:
+// the request is answered with an error, so the game shows its archived snapshot (honest fallback).
+test.beforeEach(async ({ page }) => {
+  await page.route('https://ccmc.gsfc.nasa.gov/**', (route) => route.fulfill({ status: 503, body: '[]' }));
+});
+
 // F9: accessibility and responsive pass (WCAG 2.2 AA basics, NFR-05, NFR-07, NFR-08).
 // Chromium only, desktop project only (the tablet project would repeat the same checks).
 test.setTimeout(180_000);

@@ -31,7 +31,7 @@ All data is stored as snapshots and labelled "Archived (retrieved 2026-11-14)" i
 
 ## Tech stack
 
-TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Netlify hosting with one serverless function for the live feed.
+TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Static hosting on Vercel; the live banner reads NASA DONKI directly from the browser.
 
 ## Getting started
 
@@ -53,7 +53,6 @@ src/
   ui/          React screens, components and kid copy
   shared/      types and schemas for every data file
 public/data/   NASA snapshots (JSON)
-netlify/       live space-weather function
 scripts/       data fetch scripts and the balance simulator
 tests/, e2e/   unit, security and end-to-end tests
 docs/          references, science sources, AI use, deploy guide
@@ -61,7 +60,7 @@ docs/          references, science sources, AI use, deploy guide
 
 ## Security
 
-No accounts, cookies, analytics or third-party requests. See [SECURITY_REPORT.md](SECURITY_REPORT.md).
+No accounts, cookies or analytics. The only outside request is the live banner, which asks NASA DONKI for the last 7 days. See [SECURITY_REPORT.md](SECURITY_REPORT.md).
 
 ## AI use
 

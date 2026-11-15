@@ -208,7 +208,7 @@ export interface MarsSiteInfo {
   retrievedAt: string;
 }
 
-/** Response body of GET /.netlify/functions/space-weather (always HTTP 200). */
+/** Live space weather built in the browser from NASA DONKI (src/app/live.ts, D-040). */
 export type LiveSpaceWeather =
   | { live: true; fetchedAt: string; events: SolarEvent[] }
   | { live: false };

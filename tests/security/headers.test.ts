@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-const toml = readFileSync(new URL('../../netlify.toml', import.meta.url), 'utf8');
-const globalHeaders = toml.match(/\[\[headers\]\]\s*for\s*=\s*"\/\*"([\s\S]*?)(?=\n\[\[headers\]\]|$)/)?.[1] ?? '';
+// D-040: the site is hosted on Vercel; vercel.json applies these headers to every route.
+const vercel = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')) as {
+  headers: { source: string; headers: { key: string; value: string }[] }[];
+};
+const all = vercel.headers.find((h) => h.source === '/(.*)')?.headers ?? [];
 function header(name: string): string | undefined {
-  return globalHeaders.match(new RegExp(`^\\s*${name}\\s*=\\s*"([^"]+)"`, 'm'))?.[1];
+  return all.find((h) => h.key === name)?.value;
 }
 
 describe('deployed header configuration', () => {
@@ -18,7 +21,9 @@ describe('deployed header configuration', () => {
     const entries = csp!.split(';').map((part) => part.trim().split(/\s+/));
     const directives = new Map(entries.map(([key, ...tokens]) => [key, tokens]));
     expect(directives.size).toBe(entries.length);
-    for (const name of ['default-src', 'script-src', 'connect-src', 'base-uri', 'form-action']) {
+    // connect-src: our host plus exactly NASA's keyless DONKI API for the live banner (D-040).
+    expect(directives.get('connect-src')).toEqual(["'self'", 'https://ccmc.gsfc.nasa.gov']);
+    for (const name of ['default-src', 'script-src', 'base-uri', 'form-action']) {
       expect(directives.get(name), name).toEqual(["'self'"]);
     }
     for (const name of ['object-src', 'frame-ancestors']) expect(directives.get(name), name).toEqual(["'none'"]);
@@ -34,7 +39,10 @@ describe('deployed header configuration', () => {
   });
 
   it('publishes dist only and runs the security proof suite in CI after building', () => {
-    expect(toml.match(/^publish\s*=\s*"([^"]+)"/m)?.[1]).toBe('dist');
+    const cfg = vercel as unknown as { framework: string; buildCommand: string; outputDirectory: string };
+    expect(cfg.outputDirectory).toBe('dist');
+    expect(cfg.framework).toBe('vite');
+    expect(cfg.buildCommand).toBe('npm run build');
     const ci = readFileSync(new URL('../../.github/workflows/ci.yml', import.meta.url), 'utf8');
     expect(ci).toMatch(/permissions:\s*\n\s+contents: read/);
     expect(ci).not.toMatch(/pull_request_target|secrets\./);

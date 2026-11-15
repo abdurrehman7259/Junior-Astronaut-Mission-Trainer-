@@ -232,7 +232,7 @@ export const DoseCalibrationSchema = z.object({
   sourceUrl: httpsUrl,
 });
 
-/** Body of GET /.netlify/functions/space-weather (B6). */
+/** Live space weather built in the browser from NASA DONKI (src/app/live.ts, D-040). */
 export const LiveSpaceWeatherSchema = z.discriminatedUnion('live', [
   z.object({ live: z.literal(true), fetchedAt: isoDateTime, events: z.array(SolarEventSchema) }),
   z.object({ live: z.literal(false) }),

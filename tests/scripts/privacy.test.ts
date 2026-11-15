@@ -38,7 +38,8 @@ export function scanOrigins(file: string, content: string, serverFunction = fals
       const interpolatedPrefix = built && url.includes('${');
       const schemaReference = built && /^https?:\/\/json-schema\.org\/draft(?:\/2020-12\/schema|-0[47]\/schema#)$/.test(url);
       const nasaLink = officialHost && !requestContext;
-      const proxy = serverFunction && file.replaceAll('\\', '/').startsWith('netlify/functions/') && host === 'ccmc.gsfc.nasa.gov';
+      // D-040: the live banner calls NASA's keyless DONKI API from the browser, only from src/app/live.ts.
+      const proxy = (serverFunction || normalizedFile === 'src/app/live.ts') && host === 'ccmc.gsfc.nasa.gov';
       if (!nasaLink && !proxy && !allowedLiteral && !interpolatedPrefix && !schemaReference) findings.push({ file, line: index + 1, message: `Disallowed external URL: ${url}` });
     }
   });
@@ -71,16 +72,26 @@ export function scanStorage(file: string, content: string): Finding[] {
   return findings;
 }
 
-export function scanCsp(toml: string): string[] {
+/** Checks the security headers in vercel.json (D-040). */
+export function scanCsp(vercelJson: string): string[] {
   const issues: string[] = [];
-  const block = toml.match(/\[\[headers\]\]\s*for\s*=\s*"\/\*"([\s\S]*?)(?=\n\[\[headers\]\]|$)/)?.[1] ?? '';
-  const csp = block.match(/Content-Security-Policy\s*=\s*"([^"]+)"/)?.[1] ?? '';
-  if (!/connect-src 'self'(;|$)/.test(csp)) issues.push("CSP connect-src must be exactly 'self' (SEC-B F6)");
+  let all: { key: string; value: string }[] = [];
+  try {
+    const parsed = JSON.parse(vercelJson) as { headers?: { source: string; headers: { key: string; value: string }[] }[] };
+    all = parsed.headers?.find((h) => h.source === '/(.*)')?.headers ?? [];
+  } catch {
+    issues.push('vercel.json is not valid JSON');
+  }
+  const value = (key: string) => all.find((h) => h.key === key)?.value ?? '';
+  const csp = value('Content-Security-Policy');
+  if (!/connect-src 'self' https:\/\/ccmc\.gsfc\.nasa\.gov(;|$)/.test(csp)) {
+    issues.push("CSP connect-src must be exactly 'self' https://ccmc.gsfc.nasa.gov");
+  }
   for (const needed of ["script-src 'self'", "frame-ancestors 'none'"]) {
     if (!csp.includes(needed)) issues.push(`CSP missing ${needed}`);
   }
   if (/unsafe-(?:inline|eval)/i.test(csp)) issues.push('CSP contains unsafe-inline or unsafe-eval');
-  if (!/Referrer-Policy\s*=\s*"no-referrer"/.test(block)) issues.push('Missing Referrer-Policy = "no-referrer"');
+  if (value('Referrer-Policy') !== 'no-referrer') issues.push('Missing Referrer-Policy = "no-referrer"');
   return issues;
 }
 
@@ -110,7 +121,7 @@ export function scanData(content: string): string[] {
 
 const lineFindings = (files: string[], scanner: (file: string, text: string) => Finding[]): Finding[] => files.flatMap((file) => scanner(file, readFileSync(file, 'utf8')));
 const root = process.cwd();
-const sourceFiles = [...walk(join(root, 'src')), join(root, 'index.html'), ...walk(join(root, 'netlify', 'functions'))].filter((file) => /\.(tsx?|jsx?|html)$/.test(file));
+const sourceFiles = [...walk(join(root, 'src')), join(root, 'index.html')].filter((file) => /\.(tsx?|jsx?|html)$/.test(file));
 
 describe('privacy scanners', () => {
   it('allows link-only official origins and rejects third parties or client requests', () => {
@@ -145,12 +156,22 @@ describe('privacy scanners', () => {
     expect(scanStorage('x', 'localStorage.getItem("crew")')).toHaveLength(1);
   });
   it('checks CSP requirements', () => {
-    const toml = (connect: string) =>
-      `[[headers]]\nfor = "/*"\n[headers.values]\nContent-Security-Policy = "connect-src ${connect}; script-src 'self'; frame-ancestors 'none'"\nReferrer-Policy = "no-referrer"`;
-    expect(scanCsp('[ [headers] ]')).not.toEqual([]);
-    expect(scanCsp(toml("'self'"))).toEqual([]);
-    // SEC-B F6: an extra connect origin is now a finding.
-    expect(scanCsp(toml("'self' https://api.nasa.gov"))).not.toEqual([]);
+    const vercel = (connect: string) =>
+      JSON.stringify({
+        headers: [
+          {
+            source: '/(.*)',
+            headers: [
+              { key: 'Content-Security-Policy', value: `connect-src ${connect}; script-src 'self'; frame-ancestors 'none'` },
+              { key: 'Referrer-Policy', value: 'no-referrer' },
+            ],
+          },
+        ],
+      });
+    expect(scanCsp('not json')).not.toEqual([]);
+    expect(scanCsp(vercel("'self' https://ccmc.gsfc.nasa.gov"))).toEqual([]);
+    expect(scanCsp(vercel("'self' https://ccmc.gsfc.nasa.gov https://api.nasa.gov"))).not.toEqual([]);
+    expect(scanCsp(vercel('*'))).not.toEqual([]);
   });
   it('checks snapshot URLs and timestamps', () => {
     expect(scanData('{"retrievedAt":"2026-11-14T12:00:00Z","url":"https://science.nasa.gov/"}')).toEqual([]);
@@ -161,7 +182,7 @@ describe('privacy scanners', () => {
 describe('shipped privacy guard', () => {
   it('checks all source files for external requests, trackers and CDN/font references', () => {
     const findings = [
-      ...lineFindings(sourceFiles, (file, text) => scanOrigins(relative(root, file).replaceAll('\\', '/'), text, file.includes(`${join('netlify', 'functions')}`))),
+      ...lineFindings(sourceFiles, (file, text) => scanOrigins(relative(root, file).replaceAll('\\', '/'), text, false)),
       ...lineFindings(sourceFiles, scanTracking),
     ];
     for (const file of sourceFiles) {
@@ -174,7 +195,7 @@ describe('shipped privacy guard', () => {
     expect(findings, findings.map((f) => `${f.file}:${f.line} ${f.message}`).join('\n')).toEqual([]);
   });
   it('checks CSP and all committed JSON snapshots', () => {
-    expect(scanCsp(readFileSync(join(root, 'netlify.toml'), 'utf8'))).toEqual([]);
+    expect(scanCsp(readFileSync(join(root, 'vercel.json'), 'utf8'))).toEqual([]);
     const dataFiles = walk(join(root, 'public', 'data')).filter((file) => file.endsWith('.json'));
     for (const file of dataFiles) expect(scanData(readFileSync(file, 'utf8')), `${relative(root, file)}: ${scanData(readFileSync(file, 'utf8')).join(', ')}`).toEqual([]);
   });
