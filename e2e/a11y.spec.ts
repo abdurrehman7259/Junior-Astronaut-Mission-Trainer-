@@ -12,6 +12,15 @@ type Site = 'moon' | 'mars';
 const WIDTHS = [360, 768, 1024, 1920] as const;
 
 const word = (site: Site) => (site === 'moon' ? 'Day' : 'Sol');
+const NEXT = /^(Next|Go to) (day|sol)/;
+
+/** The first Start opens the "How to play" intro (P1, D-038). Close it with a click on Skip. */
+async function skipIntro(page: Page) {
+  const intro = page.getByRole('dialog', { name: 'How to play' });
+  await expect(intro).toBeVisible();
+  await intro.getByRole('button', { name: 'Skip' }).click();
+  await expect(intro).toBeHidden();
+}
 
 async function openStart(page: Page) {
   await page.goto('/');
@@ -43,6 +52,12 @@ async function startByKeyboard(page: Page, site: Site) {
   }
   await tabTo(page, page.getByRole('button', { name: 'Start mission' }));
   await page.keyboard.press('Enter');
+  // The intro opens with focus inside it; Esc skips it and focus lands on the day heading.
+  const intro = page.getByRole('dialog', { name: 'How to play' });
+  await expect(intro).toBeVisible();
+  expect(await page.evaluate(() => !!document.activeElement?.closest('dialog'))).toBe(true);
+  await page.keyboard.press('Escape');
+  await expect(intro).toBeHidden();
   await expect(page.getByRole('heading', { name: `${word(site)} 1 of 10` })).toBeVisible();
 }
 
@@ -53,27 +68,30 @@ async function playByKeyboard(page: Page, site: Site) {
   for (let n = 1; n <= 10; n++) {
     await expect(page.getByRole('heading', { name: `${W} ${n} of 10` })).toBeFocused();
 
+    const run = page.getByRole('button', { name: `Start ${w} ${n}` });
+    // Each day starts with nothing shared (P3): Start stays off until all 10 are placed.
+    await expect(run).toBeDisabled();
     if (n === 1) {
-      // Exercise the power controls by keyboard: step buttons (Enter, Space) and a slider (arrows).
-      const science = 'Science';
-      const remove = page.getByRole('button', { name: `Remove one unit from ${science}` });
-      const add = page.getByRole('button', { name: `Add one unit to ${science}` });
-      await tabTo(page, remove);
-      await page.keyboard.press('Enter');
-      await expect(page.getByRole('button', { name: `Run ${w} 1` })).toBeDisabled();
+      // Build the plan by keyboard: step buttons (Enter, Space) and a slider (arrows, End).
+      const add = page.getByRole('button', { name: /^Add one unit to Air/ });
       await tabTo(page, add);
+      await page.keyboard.press('Enter');
       await page.keyboard.press('Space');
-      await expect(page.getByRole('button', { name: `Run ${w} 1` })).toBeEnabled();
-      const slider = page.getByRole('slider', { name: 'Shielding units' });
-      await tabTo(page, slider, { back: true });
+      await expect(run).toBeDisabled();
+      const slider = page.getByRole('slider', { name: /^Shields? units/ });
+      await tabTo(page, slider);
+      await page.keyboard.press('End'); // all the rest to shields
+      await expect(slider).toHaveAttribute('aria-valuetext', /8 of 10 units/);
+      await expect(run).toBeEnabled();
       await page.keyboard.press('ArrowLeft'); // 1 unit back to the pool
-      await expect(page.getByRole('button', { name: `Run ${w} 1` })).toBeDisabled();
+      await expect(run).toBeDisabled();
       await page.keyboard.press('ArrowRight'); // and returned
-      await expect(page.getByRole('button', { name: `Run ${w} 1` })).toBeEnabled();
-      await expect(slider).toHaveAttribute('aria-valuetext', /\d+ of 10 units/);
+      await expect(run).toBeEnabled();
+    } else {
+      const balanced = page.getByRole('button', { name: 'Balanced' });
+      await tabTo(page, balanced);
+      await page.keyboard.press('Enter');
     }
-
-    const run = page.getByRole('button', { name: `Run ${w} ${n}` });
     await tabTo(page, run);
     await expect(run).toBeEnabled();
     await page.keyboard.press('Enter');
@@ -85,7 +103,7 @@ async function playByKeyboard(page: Page, site: Site) {
       await page.keyboard.press('Enter');
       break;
     }
-    await tabTo(page, page.getByRole('button', { name: `Next ${w}` }));
+    await tabTo(page, page.getByRole('button', { name: NEXT }));
     await page.keyboard.press('Space');
   }
   await expect(page.getByRole('heading', { name: 'What really happened' })).toBeVisible();
@@ -285,17 +303,23 @@ for (const site of ['moon', 'mars'] as const) {
     }
     await auditAllWidths(page, `${site} start`);
     await page.getByRole('button', { name: 'Start mission' }).click();
+    await expect(page.getByRole('dialog', { name: 'How to play' })).toBeVisible();
+    await auditAllWidths(page, `${site} intro`);
+    await skipIntro(page);
     await expect(page.getByRole('heading', { name: `${word(site)} 1 of 10` })).toBeVisible();
     await auditAllWidths(page, `${site} mission`);
 
     const w = word(site).toLowerCase();
-    await page.getByRole('button', { name: `Run ${w} 1` }).click();
+    await page.getByRole('button', { name: 'Balanced' }).click();
+    await auditAllWidths(page, `${site} mission, plan ready`);
+    await page.getByRole('button', { name: `Start ${w} 1` }).click();
     await expect(page.getByRole('heading', { name: `${word(site)} 1 report` })).toBeVisible();
     await auditAllWidths(page, `${site} report`);
 
     for (let n = 1; n <= 10; n++) {
       if (n > 1) {
-        await page.getByRole('button', { name: `Run ${w} ${n}` }).click();
+        await page.getByRole('button', { name: 'Balanced' }).click();
+        await page.getByRole('button', { name: `Start ${w} ${n}` }).click();
         await expect(page.getByRole('heading', { name: `${word(site)} ${n} report` })).toBeVisible();
       }
       const final = page.getByRole('button', { name: 'See how the mission went' });
@@ -303,7 +327,7 @@ for (const site of ['moon', 'mars'] as const) {
         await final.click();
         break;
       }
-      await page.getByRole('button', { name: `Next ${w}` }).click();
+      await page.getByRole('button', { name: NEXT }).click();
     }
     await expect(page.getByRole('heading', { name: 'What really happened' })).toBeVisible();
     await auditAllWidths(page, `${site} end`);
@@ -348,11 +372,13 @@ for (const site of ['moon', 'mars'] as const) {
       await mars.check();
     }
     await page.getByRole('button', { name: 'Start mission' }).click();
+    await skipIntro(page);
     await expect(page.getByRole('heading', { name: `${word(site)} 1 of 10` })).toBeVisible();
 
-    const triggers = page.locator('.mission-words .glossary-trigger');
+    // Glossary words are inline now (P2): at least "Shields" in the allocator.
+    const triggers = page.locator('main .glossary-trigger');
     const count = await triggers.count();
-    expect(count).toBeGreaterThanOrEqual(4);
+    expect(count).toBeGreaterThanOrEqual(1);
     // Rightmost term first, then every other one.
     const boxes = await triggers.evaluateAll((els) => els.map((e, i) => ({ i, right: e.getBoundingClientRect().right, top: e.getBoundingClientRect().top })));
     boxes.sort((a, b) => b.right - a.right);
@@ -393,6 +419,7 @@ test('visible focus ring on every tab stop (start and mission)', async ({ page }
   };
   await check('start', 9);
   await page.getByRole('button', { name: 'Start mission' }).click();
+  await skipIntro(page);
   await expect(page.getByRole('heading', { name: 'Day 1 of 10' })).toBeVisible();
   await check('mission', 30);
 });

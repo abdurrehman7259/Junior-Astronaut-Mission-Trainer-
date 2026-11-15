@@ -23,11 +23,25 @@ const REAL_EVENTS: SolarEvent[] = STUB_EVENTS.map((e) => ({
 const loadReal = () =>
   Promise.resolve({ events: REAL_EVENTS, retrievedAt: '2026-01-01T00:00:00Z', isPlaceholder: false });
 
-async function playDays(user: ReturnType<typeof userEvent.setup>, n: number) {
-  for (let i = 0; i < n; i++) {
-    await user.click(await screen.findByRole('button', { name: /^Run day \d+$/ }));
-    await user.click(await screen.findByRole('button', { name: /Next day|See how the mission went/ }));
-  }
+type User = ReturnType<typeof userEvent.setup>;
+
+/** Plan the day with the Balanced quick plan (4/3/3), start it, then leave the report. */
+async function playDay(user: User) {
+  await user.click(await screen.findByRole('button', { name: 'Balanced' }));
+  await user.click(await screen.findByRole('button', { name: /^Start day \d+$/ }));
+  await user.click(await screen.findByRole('button', { name: /^Go to day \d+$|See how the mission went/ }));
+}
+
+async function playDays(user: User, n: number) {
+  for (let i = 0; i < n; i++) await playDay(user);
+}
+
+/** Click "Start mission"; the first time, the How to play dialog opens, so skip it. */
+async function startMission(user: User) {
+  await user.click(screen.getByRole('button', { name: 'Start mission' }));
+  const dlg = await screen.findByRole('dialog', { name: 'How to play' });
+  await user.click(within(dlg).getByRole('button', { name: 'Skip' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 }
 
 const load = () => Promise.resolve({ events: STUB_EVENTS, retrievedAt: null, isPlaceholder: true });
@@ -39,13 +53,10 @@ async function setup() {
   return user;
 }
 
-async function playToEnd(user: ReturnType<typeof userEvent.setup>) {
+async function playToEnd(user: User) {
   for (let i = 0; i < 10; i++) {
-    const btn = screen.queryByRole('button', { name: /^Run day \d+$/ });
-    if (!btn) break;
-    await user.click(btn);
-    // Day report step (plan → report → next day / end).
-    await user.click(await screen.findByRole('button', { name: /Next day|See how the mission went/ }));
+    if (!screen.queryByRole('button', { name: 'Balanced' })) break;
+    await playDay(user);
   }
   await screen.findByRole('button', { name: 'Play again' });
 }
@@ -54,12 +65,12 @@ describe('app shell', () => {
   it('shows the start screen after loading, with the placeholder banner', async () => {
     await setup();
     expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-    expect(screen.getByText('Dev mode: placeholder events, not real data.')).toBeInTheDocument();
+    expect(screen.getByText('Dev mode uses placeholder events, not real data.')).toBeInTheDocument();
   });
 
   it('starts a mission on Day 1, plays to the end and plays again', async () => {
     const user = await setup();
-    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    await startMission(user);
     expect(screen.getAllByText('Day 1 of 10').length).toBeGreaterThan(0);
     await playToEnd(user);
     expect(screen.getByText(/Science score/)).toBeInTheDocument();
@@ -78,6 +89,8 @@ describe('app shell', () => {
     };
     await check();
     await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    // The How to play dialog is open on top. Data used must be reachable once it is closed.
+    await user.click(within(screen.getByRole('dialog', { name: 'How to play' })).getByRole('button', { name: 'Skip' }));
     await check();
     await playToEnd(user);
     await check();
@@ -91,11 +104,24 @@ describe('app shell', () => {
   });
 });
 
+describe('How to play intro', () => {
+  it('opens on the first Start, remembers it, and the header button reopens it', async () => {
+    const user = await setup();
+    await startMission(user);
+    expect(localStorage.getItem('mbc.introSeen')).toBe('1');
+    await user.click(screen.getByRole('button', { name: 'How to play' }));
+    const dlg = screen.getByRole('dialog', { name: 'How to play' });
+    await user.click(within(dlg).getByRole('button', { name: 'Skip' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
 describe('save and resume', () => {
   it('resumes at Day 3 with the same meters after a remount', async () => {
     const user = userEvent.setup();
     const first = render(<App loadEventsFn={load} />);
-    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    await screen.findByRole('button', { name: 'Start mission' });
+    await startMission(user);
     await playDays(user, 2);
     const meters = screen.getAllByRole('meter').map((m) => m.getAttribute('aria-valuenow'));
     first.unmount();
@@ -111,7 +137,8 @@ describe('save and resume', () => {
   it('discards a placeholder save when real data loads', async () => {
     const user = userEvent.setup();
     const first = render(<App loadEventsFn={load} />);
-    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    await screen.findByRole('button', { name: 'Start mission' });
+    await startMission(user);
     expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
     first.unmount();
 
@@ -124,7 +151,8 @@ describe('save and resume', () => {
   it('discards a real-data save when placeholder data loads', async () => {
     const user = userEvent.setup();
     const first = render(<App loadEventsFn={loadReal} />);
-    await user.click(await screen.findByRole('button', { name: 'Start mission' }));
+    await screen.findByRole('button', { name: 'Start mission' });
+    await startMission(user);
     first.unmount();
     render(<App loadEventsFn={load} />);
     expect(await screen.findByRole('button', { name: 'Start mission' })).toBeInTheDocument();
@@ -133,7 +161,7 @@ describe('save and resume', () => {
 
   it('clears the save when the mission ends', async () => {
     const user = await setup();
-    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    await startMission(user);
     expect(localStorage.getItem(SAVE_KEY)).not.toBeNull();
     await playToEnd(user);
     expect(localStorage.getItem(SAVE_KEY)).toBeNull();
@@ -208,9 +236,11 @@ describe('reducer', () => {
 
 describe('live banner in the app', () => {
   it('shows the archived text (never "Live") when the live endpoint fails', async () => {
-    await setup();
-    expect(await screen.findByText(/Live NASA feed unavailable/)).toBeInTheDocument();
+    render(<App loadEventsFn={loadReal} />);
+    expect(await screen.findByText(/You're playing with archived NASA records \(retrieved 2026-01-01\)\./)).toBeInTheDocument();
+    expect(screen.getAllByText('Archived (retrieved 2026-01-01)').length).toBeGreaterThan(0);
     expect(screen.queryByText(/Live from/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Live \(/)).not.toBeInTheDocument();
   });
 });
 

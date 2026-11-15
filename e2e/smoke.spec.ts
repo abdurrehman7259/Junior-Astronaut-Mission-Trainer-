@@ -10,13 +10,32 @@ async function openStart(page: Page) {
   await expect(page.getByRole('button', { name: 'Start mission' })).toBeVisible({ timeout: 3_000 });
 }
 
-async function start(page: Page, site: Site) {
+/** The first Start opens the 3-card "How to play" intro (P1, D-038). Skip it. */
+async function skipIntro(page: Page) {
+  const intro = page.getByRole('dialog', { name: 'How to play' });
+  await expect(intro).toBeVisible();
+  await intro.getByRole('button', { name: 'Skip' }).click();
+  await expect(intro).toBeHidden();
+}
+
+/** Each day starts with 0 power shared (P3): pick the Balanced quick plan, then start the day. */
+async function planAndStart(page: Page, lower: string, n: number) {
+  const startBtn = page.getByRole('button', { name: `Start ${lower} ${n}` });
+  await expect(startBtn).toBeDisabled();
+  await page.getByRole('button', { name: 'Balanced' }).click();
+  await startBtn.click();
+}
+
+const NEXT = /^(Next|Go to) (day|sol)/;
+
+async function start(page: Page, site: Site, { intro = true } = {}) {
   if (site === 'mars') {
     const mars = page.getByRole('radio', { name: /Mars/ });
     await expect(mars).toBeEnabled({ timeout: 20_000 });
     await mars.check();
   }
   await page.getByRole('button', { name: 'Start mission' }).click();
+  if (intro) await skipIntro(page);
   await expect(page.getByRole('heading', { name: site === 'moon' ? 'Day 1 of 10' : 'Sol 1 of 10' })).toBeVisible();
 }
 
@@ -25,14 +44,14 @@ async function playOut(page: Page, site: Site, from = 1, maxTurns = 10) {
   const word = site === 'moon' ? 'Day' : 'Sol';
   const lower = word.toLowerCase();
   for (let n = from; n <= maxTurns; n++) {
-    await page.getByRole('button', { name: `Run ${lower} ${n}` }).click();
+    await planAndStart(page, lower, n);
     await expect(page.getByRole('heading', { name: `${word} ${n} report` })).toBeVisible();
     const final = page.getByRole('button', { name: 'See how the mission went' });
     if (await final.isVisible()) {
       await final.click();
       break;
     }
-    await page.getByRole('button', { name: `Next ${lower}` }).click();
+    await page.getByRole('button', { name: NEXT }).click();
     await expect(page.getByRole('heading', { name: `${word} ${n + 1} of 10` })).toBeVisible();
   }
   await expect(page.getByRole('heading', { name: 'What really happened' })).toBeVisible();
@@ -49,7 +68,8 @@ test('Moon full mission', async ({ page }) => {
   await expect(page.getByText('Dev mode')).toHaveCount(0);
   await start(page, 'moon');
 
-  await expect(page.getByText(/^Real (event|quiet day)$/)).toBeVisible();
+  await expect(page.getByText(/^(Real storm from NASA|Calm day \(real NASA date\))$/)).toBeVisible();
+  await expect(page.getByText(/Game strength|game dose/i)).toHaveCount(0);
   await expect(page.getByText(/Real date:/)).toBeVisible();
   await expect(page.getByText(/\b\d{1,2} \w+ \d{4}\b/).first()).toBeVisible();
   const link = page.getByRole('link', { name: /See the NASA record/ });
@@ -67,13 +87,12 @@ test('Mars full mission', async ({ page }) => {
   await start(page, 'mars');
 
   await expect(page.getByRole('heading', { name: 'Message from Earth' })).toBeVisible();
-  await expect(page.getByText('Arrives tomorrow')).toBeVisible();
-  await expect(page.getByText('Real event')).toHaveCount(0);
+  await expect(page.getByText('Real storm from NASA')).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Run sol 1' }).click();
+  await planAndStart(page, 'sol', 1);
   await expect(page.getByRole('heading', { name: 'Sol 1 report' })).toBeVisible();
   await expect(page.getByText(/Message from Earth arrived/)).toBeVisible();
-  await page.getByRole('button', { name: /Next sol|See how the mission went/ }).click();
+  await page.getByRole('button', { name: /^(Next sol|Go to sol|See how the mission went)/ }).click();
 
   const final = page.getByRole('heading', { name: 'What really happened' });
   if (!(await final.isVisible())) {
@@ -102,7 +121,7 @@ test('Data used panel', async ({ page }) => {
 
 test('Live banner falls back to archived wording', async ({ page }) => {
   await openStart(page);
-  await expect(page.getByText(/Live NASA feed unavailable/)).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/playing with archived NASA records \(retrieved/)).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/Live from NASA/)).toHaveCount(0);
 });
 
@@ -139,9 +158,9 @@ test('Resume after reload', async ({ page }) => {
   await openStart(page);
   await start(page, 'moon');
   for (const n of [1, 2]) {
-    await page.getByRole('button', { name: `Run day ${n}` }).click();
+    await planAndStart(page, 'day', n);
     await expect(page.getByRole('heading', { name: `Day ${n} report` })).toBeVisible();
-    await page.getByRole('button', { name: 'Next day' }).click();
+    await page.getByRole('button', { name: NEXT }).click();
     await expect(page.getByRole('heading', { name: `Day ${n + 1} of 10` })).toBeVisible();
   }
   await page.reload();

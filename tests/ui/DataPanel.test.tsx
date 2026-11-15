@@ -114,7 +114,7 @@ describe('LiveBanner', () => {
     };
     render(<LiveBanner live={{ status: 'live', data }} retrievedAt="2026-11-14T08:14:30Z" />);
     expect(
-      screen.getByText(/Live from NASA: 2 solar events in the last 7 days\. Strongest: Solar storm cloud \(CME\) on 12 November 2026\./),
+      screen.getByText(/Live from NASA: 2 solar events in the last 7 days\. Strongest: Solar storm cloud on 12 November 2026\./),
     ).toBeInTheDocument();
     expect(screen.getByText('Live (checked 10:30 UTC)')).toBeInTheDocument();
   });
@@ -127,7 +127,9 @@ describe('LiveBanner', () => {
 
   it('archived never says "Live from" and never labels itself live', () => {
     const { container } = render(<LiveBanner live={{ status: 'archived' }} retrievedAt="2026-11-14T08:14:30Z" />);
-    expect(screen.getByText(/archived NASA records \(retrieved 2026-11-14\)/)).toBeInTheDocument();
+    expect(
+      screen.getByText("You're playing with archived NASA records (retrieved 2026-11-14)."),
+    ).toBeInTheDocument();
     expect(screen.getByText('Archived (retrieved 2026-11-14)')).toBeInTheDocument();
     expect(container.textContent).not.toMatch(/Live from/);
     expect(container.textContent).not.toMatch(/Live \(/);
