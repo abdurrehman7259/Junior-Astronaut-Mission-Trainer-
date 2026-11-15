@@ -51,6 +51,12 @@
 /* Inline link inside a sentence: the hit area grows to about 44 px without changing the line height. */
 .earth-msg-link {
   position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
+  vertical-align: middle;
   color: var(--color-link);
   font-weight: 700;
 }

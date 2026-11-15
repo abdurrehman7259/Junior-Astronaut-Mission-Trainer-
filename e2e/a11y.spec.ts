@@ -311,6 +311,8 @@ for (const site of ['moon', 'mars'] as const) {
 
     const w = word(site).toLowerCase();
     await page.getByRole('button', { name: 'Balanced' }).click();
+    // Measure the enabled Start button after its colour transition, not mid-fade.
+    await page.getByRole('button', { name: `Start ${w} 1` }).evaluate((el) => Promise.all(el.getAnimations().map((x) => x.finished)));
     await auditAllWidths(page, `${site} mission, plan ready`);
     await page.getByRole('button', { name: `Start ${w} 1` }).click();
     await expect(page.getByRole('heading', { name: `${word(site)} 1 report` })).toBeVisible();

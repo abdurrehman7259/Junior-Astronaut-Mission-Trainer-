@@ -86,7 +86,7 @@ test('Mars full mission', async ({ page }) => {
   await openStart(page);
   await start(page, 'mars');
 
-  await expect(page.getByRole('heading', { name: 'Message from Earth' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Message from Earth', exact: true })).toBeVisible();
   await expect(page.getByText('Real storm from NASA')).toHaveCount(0);
 
   await planAndStart(page, 'sol', 1);

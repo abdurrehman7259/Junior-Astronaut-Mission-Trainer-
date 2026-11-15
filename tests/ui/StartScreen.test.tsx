@@ -33,8 +33,8 @@ describe('StartScreen', () => {
     expect(screen.queryByText(/a sol late/)).toBeNull();
     const moon = screen.getByRole('radio', { name: /Moon/ });
     const mars = screen.getByRole('radio', { name: /Mars/ });
-    expect(moon).toHaveAccessibleDescription(/Easier.*Easier: you get a warning before each storm./);
-    expect(mars).toHaveAccessibleDescription(/Harder.*Harder: storm warnings from Earth arrive one day late./);
+    expect(moon).toHaveAccessibleDescription(/Easier.*Easier: in this game, you get a warning before each storm./);
+    expect(mars).toHaveAccessibleDescription(/Harder.*Harder: in this game, storm warnings from Earth arrive one day late./);
     expect(screen.getByRole('radiogroup')).toBeInTheDocument();
   });
 
