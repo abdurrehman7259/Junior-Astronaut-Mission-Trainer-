@@ -12,7 +12,7 @@ const OUTPUT = fileURLToPath(new URL('../public/data/osdr-facts.json', import.me
  * the body after checking status. API JSON requests use the shared retry helper.
  */
 export async function checkStudyPage(url: string): Promise<void> {
-  const response = await fetch(url, { signal: AbortSignal.timeout(90_000) });
+  const response = await fetch(url, { signal: AbortSignal.timeout(90_000), redirect: 'error' });
   await response.body?.cancel();
   if (response.status !== 200) throw new Error(`Study page HTTP ${response.status}: ${url}`);
 }

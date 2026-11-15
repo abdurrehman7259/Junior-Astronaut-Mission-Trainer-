@@ -119,7 +119,7 @@ describe('space-weather', () => {
     ]);
   });
 
-  it.each(['POST', 'HEAD', 'OPTIONS'])('rejects %s without fetching', async (method) => {
+  it.each(['POST', 'PUT', 'OPTIONS']) /* HEAD is allowed since SEC-B F4 */('rejects %s without fetching', async (method) => {
     const fetchImpl = mockFeeds();
     vi.stubGlobal('fetch', fetchImpl);
     await expectFallback(await handler(new Request('https://example.test/', { method })), 405);
@@ -139,7 +139,8 @@ describe('space-weather', () => {
     await expectFallback(await handler(request));
     for (const [input, init] of fetchImpl.mock.calls) {
       expect(String(input)).not.toContain('private');
-      expect(Object.keys(init ?? {})).toEqual(['signal']);
+      expect(Object.keys(init ?? {}).sort()).toEqual(['redirect', 'signal']);
+      expect((init as RequestInit).redirect).toBe('error'); // SEC-B F2: no cross-host redirects
     }
     for (const spy of spies) expect(spy).not.toHaveBeenCalled();
   });

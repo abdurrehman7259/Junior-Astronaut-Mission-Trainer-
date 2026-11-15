@@ -70,7 +70,7 @@ export async function fetchJson(url: string | URL, options: HttpOptions = {}): P
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     let delay: number;
     try {
-      const response = await fetch(url, { headers, signal: controller.signal });
+      const response = await fetch(url, { headers, signal: controller.signal, redirect: 'error' });
       if (response.ok) {
         const data: unknown = await response.json();
         recordCount = Array.isArray(data) ? data.length : null;

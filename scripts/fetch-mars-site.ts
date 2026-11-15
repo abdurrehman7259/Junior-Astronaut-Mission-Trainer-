@@ -40,7 +40,7 @@ export function buildMarsSite(retrievedAt: string): MarsSiteInfo {
 /** Fetch each citation now and require HTTP 200 before dating or writing the snapshot. */
 export async function fetchMarsSite(): Promise<MarsSiteInfo> {
   for (const source of MARS_SITE_SOURCES) {
-    const response = await fetch(source.url, { signal: AbortSignal.timeout(60_000) });
+    const response = await fetch(source.url, { signal: AbortSignal.timeout(60_000), redirect: 'error' });
     if (response.status !== 200) {
       await response.body?.cancel();
       throw new Error(`NASA source returned HTTP ${response.status}: ${source.url}`);
