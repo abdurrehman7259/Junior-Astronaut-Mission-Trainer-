@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { DraftAllocationSchema, GameStateSchema, TurnResultSchema } from '../shared/schemas';
 import type { Allocation, GameState, SiteId, TurnResult } from '../shared/types';
+import { DEFAULT_CREW } from './state';
 
 /** Save slot for resuming a mission (FR-14). Game progress only; the crew name is local-only. */
 export const SAVE_KEY = 'mbc.save.v1';
@@ -24,7 +25,12 @@ const SavedGameSchema = z
   .object({
     version: z.literal(1),
     savedAt: z.iso.datetime(),
-    crewName: z.string().max(40),
+    // Security audit F5: a loaded name must follow the same rule as the input (12 characters, letters,
+    // numbers, spaces, hyphens). A tampered or invalid name falls back to the default crew name.
+    crewName: z.string().transform((s) => {
+      const t = s.trim();
+      return /^[\p{L}\p{N} -]{1,12}$/u.test(t) ? t : DEFAULT_CREW;
+    }),
     screen: z.enum(['mission', 'report']),
     game: GameStateSchema,
     lastResult: TurnResultSchema.nullable(),

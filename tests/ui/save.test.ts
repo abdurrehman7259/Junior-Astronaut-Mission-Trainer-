@@ -141,3 +141,26 @@ describe('save consistency', () => {
     expect(loadGame()).not.toBeNull();
   });
 });
+
+describe('security audit F5: tampered crew name in a save', () => {
+  it('replaces a 40-character name with the default, and keeps the mission', () => {
+    const s = snapshot();
+    saveGame(s);
+    const raw = JSON.parse(localStorage.getItem(SAVE_KEY)!);
+    raw.crewName = 'A'.repeat(40);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(raw));
+    const loaded = loadGame();
+    expect(loaded?.crewName).toBe('Cadets');
+    expect(loaded?.game.day).toBe(s.game.day);
+  });
+  it('replaces markup or other disallowed characters with the default', () => {
+    const s = snapshot();
+    saveGame({ ...s, crewName: '<img onerror=x>' });
+    expect(loadGame()?.crewName).toBe('Cadets');
+  });
+  it('trims a valid name and keeps it', () => {
+    const s = snapshot();
+    saveGame({ ...s, crewName: '  Nova-7  ' });
+    expect(loadGame()?.crewName).toBe('Nova-7');
+  });
+});
