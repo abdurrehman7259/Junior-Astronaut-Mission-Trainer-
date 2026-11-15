@@ -48,9 +48,9 @@ Use a **private/incognito window**, with no login.
 | 11 | Offline (1) | DevTools → Network → Offline → reload is not expected to work. Instead go offline *after* loading and play a day: the game keeps working. |
 | 12 | **Safari / iPad**, if you have one (2) | Start a mission and play 2 days. Nothing is cut off, and the buttons work by touch. (Not testable locally: D-033.) |
 
-Write the results (pass/fail plus a note) into STATUS.md under "Deployed smoke test", or send them to lead agent.
+Note the results (pass/fail plus a note) for each row.
 
 ## 4. After it's live
 - Every push to `main` redeploys automatically. After **Gate 3 (Sun 16:00)**, only fixes get pushed.
-- Record the demo from the live URL (docs/DEMO.md: screen recording only, ≤ 30 s, no minors, no NASA logos).
-- Put the live URL and the repo link into docs/SUBMISSION.md. If the repo must be public for judging, switch it to public in GitHub → Settings → General → Danger Zone → Change visibility. **This is your call.**
+- Record the demo from the live URL (screen recording only, 30 s or less, no minors, no NASA logos).
+- Put the live URL into the README. If the repo must be public for judging, switch it to public in GitHub → Settings → General → Danger Zone → Change visibility. **This is your call.**

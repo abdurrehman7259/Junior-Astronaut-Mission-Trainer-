@@ -1,7 +1,7 @@
 /**
  * PLACEHOLDER EVENTS (NOT REAL DATA). Dev and test use only, until B1 commits
  * public/data/donki-events.json. Ids start with "STUB-" so the UI can flag them,
- * and the data loader never uses them in a production build (see docs/DECISIONS.md D-006).
+ * and the data loader never uses them in a production build.
  */
 import type { SolarEvent } from '../shared/types';
 

@@ -11,5 +11,8 @@ test-results/
 .cache/
 
 # Local files that must never be committed (owner decision, Sun 15 Nov 20:05)
-Junior NASA.rar
+*.rar
 output/
+
+# Logs
+*.log

@@ -10,7 +10,7 @@ export interface DataSourceEntry {
   /** One kid-friendly sentence: what the game uses it for. */
   use: string;
   url?: string;
-  /** Optional citation for the `use` sentence itself (fact-check, docs/FACT_CHECK.md #15). */
+  /** Optional citation for the `use` sentence itself (fact-check, docs/SCIENCE_SOURCES.md #15). */
   citation?: { label: string; url: string };
   /** Status label, e.g. "Archived (retrieved 2026-11-14)". */
   status: string;

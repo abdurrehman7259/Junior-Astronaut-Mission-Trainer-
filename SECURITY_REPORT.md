@@ -1,12 +1,12 @@
 # Security report: Moon Base Cadets
 
-_Sun 15 Nov 2026, 20:05 PKT. Decision D-039. Sources: `reports/security/{app-map,audit,fix-plan,audit-final}.md`, the commits listed below._
+_Sun 15 Nov 2026, 20:05 PKT. Sources: the team's audit notes and the commits listed below._
 
 ## 1. Summary
 - **Stack:** React 19, TypeScript and Vite single-page app on Netlify, publishing `dist/` only. There is one public GET function, `netlify/functions/space-weather.ts`, which reads a fixed NASA CCMC DONKI address. The static JSON lives in `public/data/`, and the browser keeps only `mbc.*` localStorage keys. There are no accounts, database, cookies, analytics or client secrets.
 - **Audit (SEC-A, builder agent model high):** 0 Critical, 0 High, 3 Medium, 4 Low, plus one rate-limit "Needs decision".
 - **Now:** all 7 findings and the rate-limit item are **fixed**, with proof tests. Open findings: **0 Critical, 0 High, 0 Medium, 0 Low.**
-- **Re-audit (SEC-A2, builder agent model high, 20:02):** every item is PASS or N/A, with open findings Critical 0, High 0, Medium 0, Low 0 (`reports/security/audit-final.md`). It confirmed 1,658 unit tests and 54 security tests pass, both npm audits show 0 vulnerabilities, and the history scan covered 90 commits.
+- **Re-audit (SEC-A2, builder agent model high, 20:02):** every item is PASS or N/A, with open findings Critical 0, High 0, Medium 0, Low 0 . It confirmed 1,658 unit tests and 54 security tests pass, both npm audits show 0 vulnerabilities, and the history scan covered 90 commits.
 
 ## 2. Findings
 | ID | Category | Severity | File | Issue | Status |
@@ -31,8 +31,8 @@ _Sun 15 Nov 2026, 20:05 PKT. Decision D-039. Sources: `reports/security/{app-map
 - **CI:** runs the security proof suite on the built output (`.github/workflows/ci.yml`).
 - **Results:** 1,658 of 1,658 unit tests pass (36 files), the security suite passes 54 of 54, and both `npm audit` runs report 0 vulnerabilities.
 
-## 4. Not applicable (proof in `audit.md`)
-Passwords, MFA, RLS/IDOR, JWT, SQL/NoSQL, CSRF, webhooks and open redirects don't apply. There is no auth code, no database, no cookies, no state-changing endpoint and no redirect handler; the grep commands are in `audit.md`.
+## 4. Not applicable 
+Passwords, MFA, RLS/IDOR, JWT, SQL/NoSQL, CSRF, webhooks and open redirects don't apply. There is no auth code, no database, no cookies, no state-changing endpoint and no redirect handler; grep checks found none.
 
 ## 5. Manual follow-ups for Abdur Rehman Khan
 - **Secrets to rotate:** none. gitleaks 8.30.1 scanned all 83 commits and found no leaks. Nothing deployed reads `NASA_API_KEY`.
@@ -40,7 +40,7 @@ Passwords, MFA, RLS/IDOR, JWT, SQL/NoSQL, CSRF, webhooks and open redirects don'
   1. Check that `/.netlify/functions/space-weather` answers. The function now declares an explicit `config.path` and `rateLimit`, and only Netlify can show whether they work.
   2. Check that the response headers include HSTS and the CSP.
 - **Before going public:**
-  1. Never commit `Junior NASA.rar` or `output/`; both are gitignored.
+  1. Keep local archives and presentation files out of the repo (they are gitignored).
   2. Make the repo public only after the live smoke test passes.
 
 ## 6. Remaining risks

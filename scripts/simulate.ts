@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 import { drawEventSet, RULES_BY_SITE, withRules, type EngineRules } from '../src/engine';
@@ -182,6 +182,8 @@ export function main(args = process.argv.slice(2)) {
     `## Simulator policy settings\n\n${'`'.repeat(3)}json\n${JSON.stringify(POLICY_BY_SITE, null, 2)}\n${'`'.repeat(3)}`,
   );
   const text = sections.join('\n\n') + '\n';
+  // Generated report: written to the gitignored reports/ folder.
+  mkdirSync(new URL('../reports/', import.meta.url), { recursive: true });
   writeFileSync(new URL('../reports/balance-report.md', import.meta.url), text);
   console.log(text);
   if (!holds) process.exitCode = 1;

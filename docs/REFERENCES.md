@@ -38,9 +38,9 @@ The kid text describes what each study asked, not invented results. The radiatio
 
 ## Science sources for player-facing facts
 
-Checked live on 14 Nov 2026 and signed off by the science checker. Row numbers match `docs/FACT_CHECK.md`.
+Checked live on 14 Nov 2026 and signed off by the science checker. Row numbers match [docs/SCIENCE_SOURCES.md](SCIENCE_SOURCES.md).
 
-| Source | Link | Claims it supports (FACT_CHECK rows) |
+| Source | Link | Claims it supports (SCIENCE_SOURCES rows) |
 |---|---|---|
 | NASA Space Radiation Analysis Group (SRAG) FAQ | https://srag.jsc.nasa.gov/spaceradiation/faq/faq.cfm | Dose is how much radiation energy a body soaks up (#1) |
 | NOAA SWPC: Solar Flares / Radio Blackouts | https://www.swpc.noaa.gov/phenomena/solar-flares-radio-blackouts | A flare is a sudden flash of energy and light (#2). Flare classes A, B, C, M, X; each about 10 times the last (#9) |
