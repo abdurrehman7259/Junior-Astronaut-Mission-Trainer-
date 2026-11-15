@@ -33,5 +33,7 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+      - name: Security proof on built output
+        run: npx vitest run --config tests/security/vitest.config.ts
       - name: Privacy guard on built output
         run: npx vitest run tests/scripts/privacy.test.ts

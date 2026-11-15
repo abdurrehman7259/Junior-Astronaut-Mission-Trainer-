@@ -1,4 +1,4 @@
-# The CSP allows only our own host plus api.nasa.gov (child privacy, NFR-01).
+# The CSP keeps scripts and API connections on our own host (child privacy, NFR-01).
 [build]
 command = "npm run build"
 publish = "dist"
@@ -13,7 +13,8 @@ node_bundler = "esbuild"
 [[headers]]
 for = "/*"
   [headers.values]
-  Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://api.nasa.gov; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+  Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"
+  Strict-Transport-Security = "max-age=31536000"
   Referrer-Policy = "no-referrer"
   X-Content-Type-Options = "nosniff"
   X-Frame-Options = "DENY"

@@ -75,7 +75,8 @@ export function scanCsp(toml: string): string[] {
   const issues: string[] = [];
   const block = toml.match(/\[\[headers\]\]\s*for\s*=\s*"\/\*"([\s\S]*?)(?=\n\[\[headers\]\]|$)/)?.[1] ?? '';
   const csp = block.match(/Content-Security-Policy\s*=\s*"([^"]+)"/)?.[1] ?? '';
-  for (const needed of ["connect-src 'self' https://api.nasa.gov", "script-src 'self'", "frame-ancestors 'none'"]) {
+  if (!/connect-src 'self'(;|$)/.test(csp)) issues.push("CSP connect-src must be exactly 'self' (SEC-B F6)");
+  for (const needed of ["script-src 'self'", "frame-ancestors 'none'"]) {
     if (!csp.includes(needed)) issues.push(`CSP missing ${needed}`);
   }
   if (/unsafe-(?:inline|eval)/i.test(csp)) issues.push('CSP contains unsafe-inline or unsafe-eval');
@@ -144,8 +145,12 @@ describe('privacy scanners', () => {
     expect(scanStorage('x', 'localStorage.getItem("crew")')).toHaveLength(1);
   });
   it('checks CSP requirements', () => {
+    const toml = (connect: string) =>
+      `[[headers]]\nfor = "/*"\n[headers.values]\nContent-Security-Policy = "connect-src ${connect}; script-src 'self'; frame-ancestors 'none'"\nReferrer-Policy = "no-referrer"`;
     expect(scanCsp('[ [headers] ]')).not.toEqual([]);
-    expect(scanCsp('[[headers]]\nfor = "/*"\n[headers.values]\nContent-Security-Policy = "connect-src \'self\' https://api.nasa.gov; script-src \'self\'; frame-ancestors \'none\'"\nReferrer-Policy = "no-referrer"')).toEqual([]);
+    expect(scanCsp(toml("'self'"))).toEqual([]);
+    // SEC-B F6: an extra connect origin is now a finding.
+    expect(scanCsp(toml("'self' https://api.nasa.gov"))).not.toEqual([]);
   });
   it('checks snapshot URLs and timestamps', () => {
     expect(scanData('{"retrievedAt":"2026-11-14T12:00:00Z","url":"https://science.nasa.gov/"}')).toEqual([]);
