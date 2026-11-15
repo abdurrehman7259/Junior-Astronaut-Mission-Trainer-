@@ -14,6 +14,7 @@ Live game: `<LIVE_URL>` (placeholder; the repo is private and the game is not de
 |---|---|
 | **Abdur Rehman Khan** | Product owner, game designer, playtester, science checker, designer, pitch lead |
 | **Mairaj Alam** | Playtester |
+| **Maaz Iqbal** | Playtester |
 
 The game concept came from the team. AI tools were used for implementation only, under the team's direction.
 
@@ -113,5 +114,6 @@ The 30-second demo plan is in [docs/DEMO.md](docs/DEMO.md).
 The concept came from the team. AI was used for implementation only.
 
 ## Licence
-MIT (see `license` in `package.json`). Third-party libraries and their licences: [docs/REFERENCES.md](docs/REFERENCES.md).
-NASA and NOAA data are linked and credited, not relicensed. This project is not endorsed by NASA and uses no NASA logos.
+The code is MIT-licensed: see [LICENSE](LICENSE) (copyright 2026 Abdur Rehman Khan). Third-party libraries and their licences: [docs/REFERENCES.md](docs/REFERENCES.md).
+NASA, NOAA and CSA data and links stay under their own terms. They are linked and credited, not relicensed. (This version uses no CSA data; the planned food feature that would have used it was cut.)
+This project is not endorsed by NASA and uses no NASA logos.
