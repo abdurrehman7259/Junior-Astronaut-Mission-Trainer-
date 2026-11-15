@@ -6,7 +6,7 @@ describe('CME power explanations', () => {
   it('labels every CME-day power explanation as a game rule', () => {
     const event: SolarEvent = {
       id: 'cme-test', source: 'DONKI', kind: 'CME', realDate: '2024-01-01', severity: 1,
-      kidText: 'A recorded CME.', sourceUrl: 'https://example.com',
+      kidText: 'A recorded CME.', sourceUrl: 'https://ccmc.gsfc.nasa.gov/tools/DONKI/',
     };
     for (const site of ['moon', 'mars'] satisfies SiteId[]) {
       for (const allocation of [

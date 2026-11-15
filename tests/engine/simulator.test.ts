@@ -11,7 +11,7 @@ vi.mock('node:fs', async importOriginal => ({
 const moonEvents = [...EVENTS, ...EVENTS.map(event => ({ ...event, id: `EXTRA-${event.id}` }))];
 const snapshot = (mars: boolean) => JSON.stringify({
   retrievedAt: '2026-11-01T12:00:00.000Z', source: 'Synthetic test snapshot',
-  sourceUrl: 'https://example.invalid/fixture',
+  sourceUrl: 'https://ccmc.gsfc.nasa.gov/tools/DONKI/',
   items: (mars ? EVENTS : moonEvents).map(event => ({ ...event, ...(mars ? { marsImpact: 'game-only' } : {}) })),
 });
 

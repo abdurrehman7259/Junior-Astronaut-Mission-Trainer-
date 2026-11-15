@@ -7,12 +7,12 @@ export const EVENTS: SolarEvent[] = [
     id: `FIXTURE-STORM-${i}`, source: 'DONKI', kind: i % 2 === 0 ? 'FLR' : 'CME',
     realDate: `2024-01-${String(i + 1).padStart(2, '0')}`, severity,
     ...(i % 2 === 0 ? { flareClass: 'M1.0' } : {}),
-    kidText: 'Synthetic storm for engine tests only.', sourceUrl: 'https://example.invalid/fixture',
+    kidText: 'Synthetic storm for engine tests only.', sourceUrl: 'https://ccmc.gsfc.nasa.gov/tools/DONKI/',
   })),
   ...Array.from({ length: 12 }, (_, i): SolarEvent => ({
     id: `FIXTURE-QUIET-${i}`, source: 'DONKI', kind: 'QUIET',
     realDate: `2024-02-${String(i + 1).padStart(2, '0')}`, severity: 0,
-    kidText: 'Synthetic quiet day for engine tests only.', sourceUrl: 'https://example.invalid/fixture',
+    kidText: 'Synthetic quiet day for engine tests only.', sourceUrl: 'https://ccmc.gsfc.nasa.gov/tools/DONKI/',
   })),
 ];
 
