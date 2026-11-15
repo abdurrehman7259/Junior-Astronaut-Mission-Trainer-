@@ -1,10 +1,29 @@
 import type { ReactNode } from 'react';
 import type { SiteId, TurnResult } from '../../shared/types';
 import { isStubEvent } from '../../app/stub-events';
+import { meterLinesFor, verdictFor, type MeterLineKind } from '../../app/verdict';
 import { EventCard, SEVERITY_WORDS, formatRealDate, kindWordFor } from '../components/EventCard';
-import { kidTextFor } from '../content/eventCopy';
-import { BatteryIcon, FlaskIcon, HeartIcon, InfoIcon, LeafIcon, RadiationIcon } from '../components/icons';
+import {
+  BatteryIcon,
+  CheckIcon,
+  FlaskIcon,
+  HeartIcon,
+  InfoIcon,
+  LeafIcon,
+  WarningIcon,
+} from '../components/icons';
 import { ScreenHeading } from '../components/ScreenHeading';
+import {
+  EVENT,
+  NAMES,
+  REPORT,
+  REPORT_LINES,
+  REPORT_MORE,
+  VERDICT_TEXT,
+  VERDICT_TONE,
+  type DayWord,
+} from '../content/copy';
+import { kidTextFor } from '../content/eventCopy';
 import './ResolutionScreen.css';
 
 export interface ResolutionScreenProps {
@@ -23,7 +42,8 @@ interface RowProps {
   label: string;
   before: number;
   after: number;
-  explanation: string;
+  line: string;
+  tag?: string;
 }
 
 function Arrow({ delta }: { delta: number }) {
@@ -31,7 +51,7 @@ function Arrow({ delta }: { delta: number }) {
     return (
       <span className="res-arrow res-up">
         <span aria-hidden="true">▲</span>
-        <span className="visually-hidden">Up</span>
+        <span className="visually-hidden">{REPORT_MORE.arrowUp}</span>
       </span>
     );
   }
@@ -39,19 +59,19 @@ function Arrow({ delta }: { delta: number }) {
     return (
       <span className="res-arrow res-down">
         <span aria-hidden="true">▼</span>
-        <span className="visually-hidden">Down</span>
+        <span className="visually-hidden">{REPORT_MORE.arrowDown}</span>
       </span>
     );
   }
   return (
     <span className="res-arrow res-same">
       <span aria-hidden="true">●</span>
-      <span className="visually-hidden">No change</span>
+      <span className="visually-hidden">{REPORT_MORE.arrowSame}</span>
     </span>
   );
 }
 
-function Row({ className, icon, label, before, after, explanation }: RowProps) {
+function Row({ className, icon, label, before, after, line, tag }: RowProps) {
   return (
     <li className={`res-row ${className}`}>
       <div className="res-row-head">
@@ -60,30 +80,112 @@ function Row({ className, icon, label, before, after, explanation }: RowProps) {
         <Arrow delta={after - before} />
         <span className="res-numbers">
           <span aria-hidden="true">{`${before} → ${after}`}</span>
-          <span className="visually-hidden">{`from ${before} to ${after}`}</span>
+          <span className="visually-hidden">{REPORT_MORE.fromTo(before, after)}</span>
         </span>
       </div>
-      <p className="res-explain">{explanation}</p>
+      <p className="res-line">
+        <span>{line}</span>
+        {tag && <span className="res-game-note">{tag}</span>}
+      </p>
     </li>
   );
 }
 
+function lineText(line: MeterLineKind, dayWord: DayWord, isFinal: boolean): { text: string; tag?: string } {
+  switch (line.meter) {
+    case 'battery':
+      return {
+        text: {
+          empty: REPORT_LINES.batteryEmpty,
+          down: REPORT_LINES.batteryDown,
+          up: REPORT_LINES.batteryUp,
+          same: REPORT_LINES.batterySame,
+        }[line.kind],
+      };
+    case 'air':
+      return {
+        text:
+          line.kind === 'short'
+            ? REPORT_LINES.airShort(line.units, REPORT_MORE.airWhen(dayWord, isFinal))
+            : { down: REPORT_LINES.airDown, up: REPORT_LINES.airUp, same: REPORT_LINES.airSame }[line.kind],
+      };
+    case 'crew':
+      return line.kind === 'hurt'
+        ? { text: REPORT_LINES.crewHurt(line.blocked, line.received), tag: REPORT_LINES.gameNumbers }
+        : { text: line.kind === 'safe' ? REPORT_LINES.crewSafe : REPORT_LINES.crewCalm };
+    case 'science':
+      return { text: line.kind === 'points' ? REPORT_LINES.science(line.points) : REPORT_LINES.noScience };
+  }
+}
+
 export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }: ResolutionScreenProps) {
-  const { event, before, after, explanations, dose } = result;
+  const { event, before, after } = result;
   const isMars = site === 'mars';
-  const dayWord = isMars ? 'sol' : 'day';
+  const dayWord: DayWord = isMars ? 'sol' : 'day';
+
+  const verdict = verdictFor(result, site);
+  const tone = VERDICT_TONE[verdict];
+  const ToneIcon = tone === 'good' ? CheckIcon : tone === 'ok' ? InfoIcon : WarningIcon;
+
+  const [battery, air, crew, science] = meterLinesFor(result).map((l) => lineText(l, dayWord, isFinal));
+
   return (
     <section className="resolution">
-      <ScreenHeading>
-        {isMars ? 'Sol' : 'Day'} {result.day} report
-      </ScreenHeading>
+      <ScreenHeading>{REPORT.heading(dayWord, result.day)}</ScreenHeading>
+
+      <p className={`res-verdict res-verdict-${tone}`}>
+        <ToneIcon className="res-verdict-icon" />
+        <span className="res-verdict-body">
+          <span className="res-verdict-tone">{REPORT_MORE.toneWord[tone]}</span>
+          <span className="res-verdict-text">{VERDICT_TEXT[verdict](dayWord)}</span>
+        </span>
+      </p>
+
+      <div className="card res-card">
+        <h2 className="visually-hidden">{REPORT_MORE.meterListLabel}</h2>
+        <ul className="res-list">
+          <Row
+            className="res-power"
+            icon={<BatteryIcon />}
+            label={NAMES.battery}
+            before={before.power}
+            after={after.power}
+            line={battery.text}
+          />
+          <Row
+            className="res-life"
+            icon={<LeafIcon />}
+            label={NAMES.air}
+            before={before.lifeSupport}
+            after={after.lifeSupport}
+            line={air.text}
+          />
+          <Row
+            className="res-crew"
+            icon={<HeartIcon />}
+            label={NAMES.crew}
+            before={before.crewHealth}
+            after={after.crewHealth}
+            line={crew.text}
+            tag={crew.tag}
+          />
+          <Row
+            className="res-science"
+            icon={<FlaskIcon />}
+            label={NAMES.science}
+            before={result.scienceBefore}
+            after={result.scienceAfter}
+            line={science.text}
+          />
+        </ul>
+      </div>
 
       {isMars ? (
         <>
           <p className="res-reveal">
             <InfoIcon className="res-reveal-icon" />
             <span>
-              Message from Earth arrived: {kindWordFor(event.kind, 'sol')} on {formatRealDate(event.realDate)}
+              {REPORT.marsArrived} {kindWordFor(event.kind, 'sol')} on {formatRealDate(event.realDate)}
             </span>
           </p>
           <EventCard
@@ -92,9 +194,7 @@ export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }:
             dayWord="sol"
             kidText={isStubEvent(event) ? undefined : kidTextFor(event, site)}
           />
-          {event.severity >= 1 && (
-            <p className="res-late">In this game, the warning came too late. Far from Earth, crews plan ahead!</p>
-          )}
+          {event.severity >= 1 && <p className="res-late">{REPORT_MORE.marsLateShort}</p>}
         </>
       ) : (
         <p className="res-recap">
@@ -102,61 +202,15 @@ export function ResolutionScreen({ result, isFinal, onContinue, site = 'moon' }:
           <span aria-hidden="true"> · </span>
           <span>{formatRealDate(event.realDate)}</span>
           <span aria-hidden="true"> · </span>
-          <span>Game strength: {SEVERITY_WORDS[event.severity]}</span>
+          <span>{`${EVENT.stormSize} ${SEVERITY_WORDS[event.severity]}`}</span>
         </p>
       )}
 
-      <div className="card res-card">
-        <h2 className="visually-hidden">What changed</h2>
-        <ul className="res-list">
-          <Row
-            className="res-power"
-            icon={<BatteryIcon />}
-            label="Power reserve"
-            before={before.power}
-            after={after.power}
-            explanation={explanations.power}
-          />
-          <Row
-            className="res-life"
-            icon={<LeafIcon />}
-            label="Life support"
-            before={before.lifeSupport}
-            after={after.lifeSupport}
-            explanation={explanations.lifeSupport}
-          />
-          <Row
-            className="res-crew"
-            icon={<HeartIcon />}
-            label="Crew health"
-            before={before.crewHealth}
-            after={after.crewHealth}
-            explanation={explanations.crewHealth}
-          />
-          <Row
-            className="res-science"
-            icon={<FlaskIcon />}
-            label="Science"
-            before={result.scienceBefore}
-            after={result.scienceAfter}
-            explanation={explanations.science}
-          />
-        </ul>
-
-        {dose.received > 0 && (
-          <p className="res-dose">
-            <RadiationIcon className="res-dose-icon" />
-            <span>
-              Radiation that reached the crew: {dose.received} (your shield blocked {dose.blocked})
-            </span>
-            <span className="res-game-note">Game numbers</span>
-          </p>
-        )}
+      <div className="res-actions">
+        <button type="button" className="btn btn-primary btn-large res-continue" onClick={onContinue}>
+          {isFinal ? REPORT.final : REPORT_MORE.goTo(dayWord, result.day + 1)}
+        </button>
       </div>
-
-      <button type="button" className="btn btn-primary btn-large res-continue" onClick={onContinue}>
-        {isFinal ? 'See how the mission went' : `Next ${dayWord}`}
-      </button>
     </section>
   );
 }
