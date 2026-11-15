@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from 'react';
 import { dayWordCap } from '../../app/state';
 import { MISSION_DAYS, type SiteId } from '../../shared/types';
+import { HEADER, type DayWord } from '../content/copy';
 
 interface Props {
   day: number | null;
@@ -8,12 +9,28 @@ interface Props {
   isPlaceholder: boolean;
   onOpenData: () => void;
   dataButtonRef: RefObject<HTMLButtonElement | null>;
+  /** Permanent goal line. science is null on the start screen. */
+  goal: { site: SiteId; science: number | null };
+  onOpenHowTo: () => void;
+  howToButtonRef: RefObject<HTMLButtonElement | null>;
   /** Optional strip directly under the header (live banner). */
   banner?: ReactNode;
   children: ReactNode;
 }
 
-export function AppShell({ day, site = 'moon', isPlaceholder, onOpenData, dataButtonRef, banner, children }: Props) {
+export function AppShell({
+  day,
+  site = 'moon',
+  isPlaceholder,
+  onOpenData,
+  dataButtonRef,
+  goal,
+  onOpenHowTo,
+  howToButtonRef,
+  banner,
+  children,
+}: Props) {
+  const goalDayWord: DayWord = goal.site === 'mars' ? 'sol' : 'day';
   return (
     <>
       <a className="skip-link" href="#main">
@@ -21,11 +38,11 @@ export function AppShell({ day, site = 'moon', isPlaceholder, onOpenData, dataBu
       </a>
       <header className="app-header">
         <div className="container app-header-inner">
-          <div>
+          <div className="app-brand">
             <p className="app-title">
               <strong>Moon Base Cadets</strong>
             </p>
-            <p className="app-tagline">Run a Moon base. Survive real solar storms.</p>
+            <p className="app-goal">{HEADER.goal(MISSION_DAYS, goalDayWord, goal.science)}</p>
           </div>
           <div className="app-header-actions">
             {day !== null && (
@@ -33,8 +50,11 @@ export function AppShell({ day, site = 'moon', isPlaceholder, onOpenData, dataBu
                 {dayWordCap(site)} {day} of {MISSION_DAYS}
               </span>
             )}
+            <button ref={howToButtonRef} type="button" className="btn btn-secondary" onClick={onOpenHowTo}>
+              {HEADER.howToPlay}
+            </button>
             <button ref={dataButtonRef} type="button" className="btn btn-secondary" onClick={onOpenData}>
-              Data used
+              {HEADER.dataUsed}
             </button>
           </div>
         </div>

@@ -1,0 +1,50 @@
+.howto {
+  width: min(36rem, calc(100% - 2 * var(--gutter)));
+  max-height: calc(100dvh - 2 * var(--gutter));
+  overflow-y: auto;
+}
+.howto h2 {
+  margin: 0 0 var(--space-1);
+}
+.howto-step {
+  margin: 0 0 var(--space-3);
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.howto-card {
+  min-height: 11rem;
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height);
+}
+.howto-card p {
+  margin: 0 0 var(--space-3);
+}
+.howto-card-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-h2);
+  line-height: var(--line-height-tight);
+}
+.howto-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.howto-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+@media (max-width: 480px) {
+  .howto {
+    padding: var(--space-4);
+  }
+  .howto-card {
+    min-height: 0;
+  }
+  .howto-actions .btn {
+    padding-inline: var(--space-4);
+  }
+}
