@@ -27,7 +27,25 @@ const countWords = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 const units = z.int().min(0).max(POWER_UNITS_PER_DAY);
 const meter = z.int().min(METER_MIN).max(METER_MAX);
 const missionDay = z.int().min(1).max(MISSION_DAYS);
-const httpsUrl = z.url({ protocol: /^https$/ });
+/**
+ * Link allowlist (security audit F3): every link built from data must be https on nasa.gov or noaa.gov,
+ * or a subdomain of them. Exact host or dot-suffix match, so "evilnasa.gov" and "nasa.gov.evil.com" fail.
+ */
+export const ALLOWED_LINK_DOMAINS = ['nasa.gov', 'noaa.gov'] as const;
+export function isAllowedLinkUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return false;
+  const host = url.hostname.toLowerCase();
+  return ALLOWED_LINK_DOMAINS.some((d) => host === d || host.endsWith(`.${d}`));
+}
+const httpsUrl = z
+  .url({ protocol: /^https$/ })
+  .refine(isAllowedLinkUrl, { message: 'Link must be https on nasa.gov or noaa.gov' });
 const isoDateTime = z.iso.datetime({ offset: true });
 
 export const AllocationSchema = z
