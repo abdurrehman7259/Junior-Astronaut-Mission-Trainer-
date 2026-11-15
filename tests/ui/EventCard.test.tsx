@@ -1,6 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { EventCard } from '../../src/ui/components/EventCard';
+import { EventCard, KIND_WORDS, SEVERITY_WORDS, formatRealDate, kindWordFor } from '../../src/ui/components/EventCard';
 import type { SolarEvent } from '../../src/shared/types';
 
 const URL = 'https://kauai.ccmc.gsfc.nasa.gov/DONKI/view/FLR/12345/-1';
@@ -54,13 +55,31 @@ describe('EventCard', () => {
     expect(screen.getByRole('region', { name: 'Day 4 space weather' })).toBeInTheDocument();
   });
 
-  it('uses kid words for the kind', () => {
+  it('uses kid words for the kind, with glossary terms for flare and storm cloud', () => {
     const { rerender } = render(<EventCard event={flare} day={1} />);
-    expect(screen.getByText('Solar flare')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Solar flare/ })).toBeInTheDocument();
     rerender(<EventCard event={cme} day={1} />);
-    expect(screen.getByText('Solar storm cloud (CME)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Solar storm cloud/ })).toBeInTheDocument();
     rerender(<EventCard event={quiet} day={1} />);
-    expect(screen.getByText('Quiet Sun day')).toBeInTheDocument();
+    expect(screen.getByText('Calm Sun day')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('opens the glossary definition from the kind word', async () => {
+    const user = userEvent.setup();
+    render(<EventCard event={cme} day={1} />);
+    await user.click(screen.getByRole('button', { name: /Solar storm cloud/ }));
+    expect(screen.getByRole('region', { name: 'Solar storm cloud' })).toHaveTextContent(/huge cloud of solar gas/);
+  });
+
+  it('exports the kind and size helpers with kid words', () => {
+    expect(kindWordFor('FLR')).toBe('Solar flare');
+    expect(kindWordFor('CME')).toBe('Solar storm cloud');
+    expect(kindWordFor('QUIET')).toBe('Calm Sun day');
+    expect(kindWordFor('QUIET', 'sol')).toBe('Calm Sun sol');
+    expect(KIND_WORDS.CME).toBe('Solar storm cloud');
+    expect(SEVERITY_WORDS).toEqual({ 0: 'None', 1: 'Small', 2: 'Medium', 3: 'Big' });
+    expect(formatRealDate('2024-05-10')).toBe('10 May 2024');
   });
 
   it('formats the real date in UTC', () => {
@@ -69,19 +88,46 @@ describe('EventCard', () => {
     expect(screen.getByText('10 May 2024')).toBeInTheDocument();
   });
 
-  it('shows severity as a word and detail text', () => {
+  it('shows storm size as bolts plus a word, and never "Game strength"', () => {
     const { rerender, container } = render(<EventCard event={flare} day={1} />);
+    expect(screen.getByText('Storm size:')).toBeInTheDocument();
     expect(screen.getByText('Big')).toBeInTheDocument();
-    expect(screen.getByText('Class X1.1')).toBeInTheDocument();
     expect(container.querySelectorAll('.pip')).toHaveLength(3);
     expect(container.querySelectorAll('.pip-on')).toHaveLength(3);
+    expect(container.querySelector('.pips')).toHaveAttribute('aria-hidden', 'true');
     rerender(<EventCard event={cme} day={1} />);
     expect(screen.getByText('Medium')).toBeInTheDocument();
-    expect(screen.getByText('1,200 km/s')).toBeInTheDocument();
     expect(container.querySelectorAll('.pip-on')).toHaveLength(2);
+    rerender(<EventCard event={{ ...cme, severity: 1 }} day={1} />);
+    expect(screen.getByText('Small')).toBeInTheDocument();
     rerender(<EventCard event={quiet} day={1} />);
-    expect(screen.getByText('Calm')).toBeInTheDocument();
+    expect(screen.queryByText('Storm size:')).not.toBeInTheDocument();
     expect(container.querySelectorAll('.pip-on')).toHaveLength(0);
+    expect(container.textContent).not.toMatch(/game strength/i);
+  });
+
+  it('hides flare class and CME speed behind a More details toggle', async () => {
+    const user = userEvent.setup();
+    const { rerender, container } = render(<EventCard event={flare} day={1} />);
+    expect(container.textContent).not.toMatch(/X1\.1/);
+    const toggle = screen.getByRole('button', { name: 'More details' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(toggle).toHaveTextContent('Fewer details');
+    expect(screen.getByText('NASA flare class: X1.1. X is the biggest class.')).toBeInTheDocument();
+    await user.click(toggle);
+    expect(screen.queryByText(/NASA flare class/)).not.toBeInTheDocument();
+
+    rerender(<EventCard event={cme} day={1} />);
+    expect(container.textContent).not.toMatch(/1,200/);
+    await user.click(screen.getByRole('button', { name: 'More details' }));
+    expect(screen.getByText('Speed: 1,200 km per second.')).toBeInTheDocument();
+  });
+
+  it('has no More details toggle when there are no numbers to show', () => {
+    render(<EventCard event={quiet} day={1} />);
+    expect(screen.queryByRole('button', { name: /details/ })).not.toBeInTheDocument();
   });
 
   it('shows the kid text, or the override', () => {
@@ -92,11 +138,24 @@ describe('EventCard', () => {
     expect(screen.queryByText('A big burst of light left the Sun.')).not.toBeInTheDocument();
   });
 
-  it('badges real events and real quiet days', () => {
+  it('badges real storms and calm days in kid words', () => {
     const { rerender } = render(<EventCard event={flare} day={1} />);
-    expect(screen.getByText('Real event')).toBeInTheDocument();
+    expect(screen.getByText('Real storm from NASA')).toBeInTheDocument();
     rerender(<EventCard event={quiet} day={1} />);
-    expect(screen.getByText('Real quiet day')).toBeInTheDocument();
+    expect(screen.getByText('Calm day (real NASA date)')).toBeInTheDocument();
+    rerender(<EventCard event={quiet} day={1} dayWord="sol" />);
+    expect(screen.getByText('Calm sol (real NASA date)')).toBeInTheDocument();
+  });
+
+  it('keeps the Mars notes only on Mars', () => {
+    const listed = { ...cme, marsImpact: 'listed' as const };
+    const gameOnly = { ...cme, marsImpact: 'game-only' as const };
+    const { rerender } = render(<EventCard event={listed} day={1} dayWord="sol" />);
+    expect(screen.getByText("NASA's model predicted this storm would reach Mars.")).toBeInTheDocument();
+    rerender(<EventCard event={gameOnly} day={1} dayWord="sol" />);
+    expect(screen.getByText('Recorded by NASA. In the game, this storm also reaches Mars.')).toBeInTheDocument();
+    rerender(<EventCard event={listed} day={1} />);
+    expect(screen.queryByText(/reach Mars/)).not.toBeInTheDocument();
   });
 
   it('marks STUB events as placeholders with no Real wording', () => {

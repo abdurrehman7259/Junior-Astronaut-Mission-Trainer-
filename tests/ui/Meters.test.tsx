@@ -1,5 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { RULE_LINES } from '../../src/ui/content/copy';
 import { Meters } from '../../src/ui/components/Meters';
 
 const healthy = { power: 72, lifeSupport: 85, crewHealth: 90 };
@@ -7,7 +8,7 @@ const healthy = { power: 72, lifeSupport: 85, crewHealth: 90 };
 describe('Meters', () => {
   it('shows the four labels and their numbers', () => {
     render(<Meters meters={healthy} scienceScore={14} />);
-    for (const label of ['Power reserve', 'Life support', 'Crew health', 'Science score']) {
+    for (const label of ['Battery', 'Air & food', 'Crew health', 'Science ★']) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
     expect(screen.getByText('72')).toBeInTheDocument();
@@ -18,7 +19,7 @@ describe('Meters', () => {
 
   it('gives each bar an accessible name, range and value', () => {
     render(<Meters meters={healthy} scienceScore={14} />);
-    const power = screen.getByRole('meter', { name: 'Power reserve' });
+    const power = screen.getByRole('meter', { name: 'Battery' });
     expect(power).toHaveAttribute('aria-valuenow', '72');
     expect(power).toHaveAttribute('aria-valuemin', '0');
     expect(power).toHaveAttribute('aria-valuemax', '100');
@@ -36,7 +37,7 @@ describe('Meters', () => {
     render(<Meters meters={{ power: 30, lifeSupport: 31, crewHealth: 90 }} scienceScore={0} />);
     const tags = screen.getAllByText('Low!');
     expect(tags).toHaveLength(1);
-    const item = screen.getByRole('meter', { name: 'Power reserve' }).closest('li')!;
+    const item = screen.getByRole('meter', { name: 'Battery' }).closest('li')!;
     expect(within(item).getByText('Low!')).toBeInTheDocument();
   });
 
@@ -61,6 +62,45 @@ describe('Meters', () => {
     expect(screen.getByText('no change')).toBeInTheDocument();
     expect(screen.getByText('▲ +3')).toBeInTheDocument();
     expect(screen.getByText('up 3')).toBeInTheDocument();
+  });
+
+  it('never uses the old names', () => {
+    const { container } = render(<Meters meters={healthy} scienceScore={14} showRules />);
+    expect(container.textContent).not.toMatch(/reserve|life support|science score/i);
+  });
+
+  it('shows preview chips with signs, hidden words and the label', () => {
+    render(
+      <Meters
+        meters={healthy}
+        scienceScore={14}
+        preview={{ power: 5, lifeSupport: -10, crewHealth: 0, science: 6 }}
+        previewLabel="If you start this day:"
+      />,
+    );
+    expect(screen.getByText('If you start this day:')).toBeInTheDocument();
+    expect(screen.getByText('▲ +5')).toBeInTheDocument();
+    expect(screen.getByText('up 5')).toBeInTheDocument();
+    expect(screen.getByText('▼ −10')).toBeInTheDocument();
+    expect(screen.getByText('down 10')).toBeInTheDocument();
+    expect(screen.getByText('no change')).toBeInTheDocument();
+    expect(screen.getByText('▲ +6')).toBeInTheDocument();
+    expect(screen.getByText('up 6')).toBeInTheDocument();
+  });
+
+  it('shows no preview label or chips when preview is null', () => {
+    render(<Meters meters={healthy} scienceScore={14} preview={null} previewLabel="If you start this day:" />);
+    expect(screen.queryByText('If you start this day:')).not.toBeInTheDocument();
+    expect(screen.queryByText(/▲|▼/)).not.toBeInTheDocument();
+  });
+
+  it('shows the battery rule only when showRules is set, and ties it to the Battery meter', () => {
+    const { rerender } = render(<Meters meters={healthy} scienceScore={14} />);
+    expect(screen.queryByText(RULE_LINES.battery)).not.toBeInTheDocument();
+    rerender(<Meters meters={healthy} scienceScore={14} showRules />);
+    const rule = screen.getByText(RULE_LINES.battery);
+    expect(rule).toBeInTheDocument();
+    expect(screen.getByRole('meter', { name: 'Battery' })).toHaveAttribute('aria-describedby', rule.closest('p')!.id);
   });
 
   it('shows no chips without deltas', () => {

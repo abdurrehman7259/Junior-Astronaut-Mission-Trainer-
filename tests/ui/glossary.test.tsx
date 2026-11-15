@@ -61,6 +61,13 @@ describe('GlossaryTerm', () => {
     expect(screen.queryByRole('region')).toBeNull();
   });
 
+  it('shows the kid word by default and the given children when passed', () => {
+    const { rerender } = render(<GlossaryTerm k="cme" />);
+    expect(screen.getByRole('button')).toHaveTextContent('Solar storm cloud');
+    rerender(<GlossaryTerm k="sol">sol</GlossaryTerm>);
+    expect(screen.getByRole('button')).toHaveTextContent(/^sol/);
+  });
+
   it('closes when clicking outside', async () => {
     const user = userEvent.setup();
     render(
@@ -85,7 +92,7 @@ describe('Mars glossary entries', () => {
   });
 
   it('has the expected terms', () => {
-    expect(GLOSSARY.commDelay.term).toBe('Communication delay');
+    expect(GLOSSARY.commDelay.term).toBe('Radio delay');
     expect(GLOSSARY.jezero.term).toBe('Jezero Crater');
     expect(GLOSSARY.sol.definition).toBe('A sol is one day on Mars. It is a little longer than an Earth day.');
   });

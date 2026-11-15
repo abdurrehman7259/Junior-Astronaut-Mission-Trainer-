@@ -11,11 +11,18 @@
   background: none;
   color: inherit;
   font: inherit;
-  text-decoration: underline dotted;
-  text-underline-offset: 0.2em;
+  /* Inline use: the dotted accent underline and the "?" are the only cue that a word has a definition. */
+  font-weight: 700;
+  text-decoration: underline dotted var(--color-accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.25em;
   cursor: pointer;
 }
-/* Extend the hit area to about 44px tall without changing layout. */
+.glossary-trigger:hover,
+.glossary-trigger[aria-expanded='true'] {
+  color: var(--color-accent);
+}
+/* Extend the hit area to about 44px tall without changing line height or layout. */
 .glossary-trigger::after {
   content: '';
   position: absolute;
@@ -26,7 +33,9 @@
   margin-inline-start: var(--space-1);
   font-size: var(--font-size-sm);
   font-weight: 700;
+  line-height: 1;
   color: var(--color-accent);
+  text-decoration: none;
 }
 .glossary-popover {
   position: absolute;

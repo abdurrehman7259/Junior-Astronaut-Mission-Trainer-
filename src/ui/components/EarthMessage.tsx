@@ -1,6 +1,8 @@
 import { useId } from 'react';
 import type { MarsSiteInfo, SolarEvent } from '../../shared/types';
+import { EARTH_EXTRA, EARTH_MSG } from '../content/copy';
 import { formatRealDate, kindWordFor } from './EventCard';
+import { GlossaryTerm } from './GlossaryTerm';
 import './EarthMessage.css';
 
 export interface EarthMessageProps {
@@ -51,37 +53,41 @@ export function EarthMessage({ marsSite = null, yesterday = null }: EarthMessage
   const source = lightTimeSource(marsSite);
   const range = marsSite?.lightTimeMinutes;
 
+  // "sol" in the rule line is an inline glossary term (the first place a Mars player meets the word).
+  const [ruleBefore, ruleAfter] = EARTH_MSG.rule.split('sol');
+
   return (
     <section className="earth-msg card" aria-labelledby={headingId}>
-      <h2 id={headingId} className="earth-msg-title">
-        <AntennaIcon />
-        <span>Message from Earth</span>
-      </h2>
-
-      <p className="earth-msg-status">Arrives tomorrow</p>
+      <div className="earth-msg-head">
+        <h2 id={headingId} className="earth-msg-title">
+          <AntennaIcon size={32} />
+          <span>{EARTH_MSG.title}</span>
+        </h2>
+        <p className="earth-msg-status">{EARTH_MSG.status}</p>
+      </div>
 
       <ul className="earth-msg-list">
         <li>
-          <span className="earth-msg-tag">Real fact</span>{' '}
-          {range
-            ? `Radio signals take ${range.min} to ${range.max} minutes to cross between Earth and Mars.`
-            : 'Radio signals take minutes to cross between Earth and Mars.'}{' '}
+          <span className="earth-msg-tag">{EARTH_MSG.realFact}</span>{' '}
+          {range ? EARTH_MSG.radio(range.min, range.max) : EARTH_MSG.radioNoNumbers}{' '}
           {source && (
             <a className="earth-msg-link" href={source.url} target="_blank" rel="noopener noreferrer">
-              Source
+              {EARTH_EXTRA.source}
               <span className="visually-hidden"> (opens in a new tab)</span>
             </a>
           )}
         </li>
         <li>
-          <span className="earth-msg-tag">Game rule</span> In this game, storm warnings reach your base one sol late.
+          <span className="earth-msg-tag">{EARTH_MSG.gameRule}</span> {ruleBefore}
+          <GlossaryTerm k="sol">sol</GlossaryTerm>
+          {ruleAfter} {EARTH_EXTRA.radioFaster}
         </li>
-        <li>Plan without knowing today's space weather!</li>
+        <li>{EARTH_MSG.plan}</li>
       </ul>
 
       {yesterday && (
         <p className="earth-msg-yesterday">
-          Yesterday's message: {kindWordFor(yesterday.kind, 'sol')}, {formatRealDate(yesterday.realDate)}
+          {EARTH_MSG.yesterday} {kindWordFor(yesterday.kind, 'sol')}, {formatRealDate(yesterday.realDate)}
         </p>
       )}
     </section>

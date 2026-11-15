@@ -19,6 +19,8 @@ const cme = (id: string, cmeSpeedKms?: number) =>
 const quiet = (id: string) => ev({ id, kind: 'QUIET', severity: 0 });
 
 const BANNED = /\b(deadly|die|dies|death|kill|killer|destroy)\b/i;
+// Jargon that must not appear on screen without explanation (D-038): the numbers live behind "More details".
+const JARGON = /game dose|reserve|\bCMEs?\b|\b[XMCBA]\d+(\.\d+)?\b|\bClass\b/;
 
 const events: SolarEvent[] = [
   flare('f-x', 'X1.1'),
@@ -54,6 +56,7 @@ describe('kidTextFor', () => {
     for (const n of counts) expect(n).toBeLessThan(15);
     expect(counts.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(28);
     expect(text).not.toMatch(BANNED);
+    expect(text).not.toMatch(JARGON);
     expect(text).not.toContain('undefined');
     expect(text).not.toContain('NaN');
   });
@@ -79,6 +82,7 @@ describe('kidTextFor', () => {
     const texts = manyIds.map((id) => kidTextFor(flare(id, 'X1.1')));
     expect(texts.some((t) => /strongest/.test(t))).toBe(true);
     for (const t of texts) expect(t).toMatch(/strongest|radiation/);
+    for (const t of texts) expect(t).not.toMatch(/X1\.1/);
   });
 
   it('describes quiet days as calm', () => {
@@ -89,7 +93,7 @@ describe('kidTextFor', () => {
   it('handles a CME without speed', () => {
     for (const id of manyIds) {
       const text = kidTextFor(cme(id));
-      expect(text).toMatch(/CME|cloud/);
+      expect(text).toMatch(/cloud/);
       expect(text).not.toMatch(/\bdays?\b/);
     }
   });
@@ -101,22 +105,31 @@ describe('kidTextFor', () => {
   });
 });
 
-describe('kidTextFor on the Moon is unchanged', () => {
+describe('kidTextFor on the Moon (kid words, no class numbers)', () => {
   const SNAPSHOT = [
-    'This X1.1 flare is the strongest kind. Raise your shield to protect your crew.',
+    'This flare is the strongest class. Raise your shield to protect your crew.',
     'A medium flash from the Sun! Give your shield some power to help your crew.',
-    'This C5.3 flare is a small burst of light from the Sun. Your base can relax a bit.',
-    'This CME cloud would take about 4 days to reach the Moon. In our game it hits your base, so shield up!',
-    'At this speed, it would take about 2 days to cross to the Moon. Strong shields will help your crew.',
-    'Huge Sun cloud! It would take about 1 day to reach the Moon, so shield up.',
+    'This small flare is a gentle burst of light from the Sun. Your base can relax a bit.',
+    'This Sun cloud would take about 4 days to reach the Moon. In this game it hits your base, so shield up!',
+    'A rough guess: this cloud needs about 2 days to reach the Moon. Strong shields help your crew.',
+    'Huge Sun cloud! A rough estimate: about 1 day to reach the Moon, so shield up.',
     // Fact-check fix (D-028): DONKI logs notable events only, so say "no big flares".
-    "NASA's records show no big flares or CMEs this day. Great day for science!",
+    "NASA's records show no big flares or storm clouds this day. Great day for science!",
     'A giant cloud of Sun gas and magnetism is coming. Power your shield to be ready.',
   ];
 
-  it('matches the texts recorded before the Mars change', () => {
+  it('matches the recorded kid texts', () => {
     expect(events.map((e) => kidTextFor(e))).toEqual(SNAPSHOT);
     expect(events.map((e) => kidTextFor(e, 'moon'))).toEqual(SNAPSHOT);
+  });
+
+  it('keeps the 8-minute flare light time on the Moon', () => {
+    const moon = manyIds.map((id) => kidTextFor(flare(id, 'X1.1')));
+    expect(moon.some((t) => /about 8 minutes/.test(t))).toBe(true);
+  });
+
+  it('phrases the CME travel time as an estimate', () => {
+    for (const id of manyIds) expect(kidTextFor(cme(id, 900))).toMatch(/about 2 days/);
   });
 });
 
@@ -144,28 +157,24 @@ describe('kidTextFor on Mars', () => {
     for (const n of counts) expect(n).toBeLessThan(15);
     expect(counts.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(28);
     expect(text).not.toMatch(MARS_BANNED);
+    expect(text).not.toMatch(JARGON);
     expect(text).not.toMatch(/undefined|NaN|Moon/);
     expect(text).not.toMatch(/minutes/);
     expect(text).toBe(kidTextFor({ ...event }, 'mars'));
   });
 
-  it('says the model predicted a listed CME, with a sol hint', () => {
+  it('leaves the "model predicted" claim to the card note and keeps the sol hint', () => {
     for (const id of manyIds) {
-      const text = kidTextFor(listed(id, 900), 'mars');
-      expect(text).toMatch(/model predicted/);
-      expect(text).toMatch(/\bsol\b/);
-    }
-  });
-
-  it('does not claim a prediction for a game-only CME', () => {
-    for (const id of manyIds) {
-      const text = kidTextFor(gameOnly(id, 900), 'mars');
-      expect(text).not.toMatch(/predicted/);
-      expect(text).toMatch(/In our game/);
+      for (const e of [listed(id, 900), gameOnly(id, 900)]) {
+        const text = kidTextFor(e, 'mars');
+        expect(text).not.toMatch(/predicted/);
+        expect(text).toMatch(/In this game/);
+        expect(text).toMatch(/\bsol\b/);
+      }
     }
   });
 
   it('describes a quiet Mars day with real records', () => {
-    expect(kidTextFor(quiet('q'), 'mars')).toBe("NASA's storm log shows no big flares or CMEs this day.");
+    expect(kidTextFor(quiet('q'), 'mars')).toBe("NASA's storm log shows no big flares or storm clouds this day.");
   });
 });

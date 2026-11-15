@@ -10,7 +10,7 @@ export interface GlossaryEntry {
 /** Kid-friendly definitions: at most 20 words, every sentence under 15 words. */
 export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
   dose: {
-    term: 'Dose',
+    term: 'Radiation dose',
     definition: 'Dose is how much radiation energy a body soaks up.',
     sourceTitle: 'NASA JSC Space Radiation Analysis Group: radiation FAQ',
     sourceUrl: 'https://srag.jsc.nasa.gov/spaceradiation/faq/faq.cfm',
@@ -22,7 +22,7 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
     sourceUrl: 'https://www.swpc.noaa.gov/phenomena/solar-flares-radio-blackouts',
   },
   cme: {
-    term: 'CME',
+    term: 'Solar storm cloud',
     definition: 'Coronal mass ejection: a huge cloud of solar gas and magnetism blasted into space.',
     sourceTitle: 'NOAA SWPC: Coronal mass ejections',
     sourceUrl: 'https://www.swpc.noaa.gov/phenomena/coronal-mass-ejections',
@@ -40,7 +40,7 @@ export const GLOSSARY: Record<GlossaryKey, GlossaryEntry> = {
     sourceUrl: 'https://www.nasa.gov/image-article/barsoom/',
   },
   commDelay: {
-    term: 'Communication delay',
+    term: 'Radio delay',
     definition: 'Radio messages between Earth and Mars take about 4 to 24 minutes one way.',
     sourceTitle: 'NASA NTRS: Why Moon to Mars (2025 IAC), one-way light-time',
     sourceUrl: 'https://ntrs.nasa.gov/api/citations/20250009282/downloads/2025%20IAC%20-%20Why%20Moon%20and%20Mars%20-%200916%20Edits.pdf',

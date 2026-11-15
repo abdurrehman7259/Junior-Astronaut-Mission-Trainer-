@@ -43,22 +43,25 @@ function daysPhrase(days: number): string {
   return `about ${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
-const X_FLARE: readonly ((cls: string) => string)[] = [
-  (cls) => `This ${cls} flare is the strongest kind. Raise your shield to protect your crew.`,
-  () => 'Flare light reaches your base in about 8 minutes. Big flares mean more radiation, so shield up.',
-  () => 'Big flash from the Sun! X is the strongest flare class, so power your shield.',
+// Kid wording (D-038): no flare class numbers and no "CME" here. Class and speed sit behind "More details" on the card.
+// "storm cloud" is the kid word for a CME; the card links it to the glossary.
+
+const X_FLARE: readonly string[] = [
+  'This flare is the strongest class. Raise your shield to protect your crew.',
+  'Flare light reaches your base in about 8 minutes. Big flares mean more radiation, so shield up.',
+  'Big flash from the Sun! It is the strongest flare class, so power your shield.',
 ];
 
-const M_FLARE: readonly ((cls: string) => string)[] = [
-  (cls) => `This ${cls} flare is about 10 times stronger than a C flare. Shields help your crew.`,
-  () => 'Flare light reaches your base in about 8 minutes. Medium flares can bring radiation, so shield up.',
-  () => 'A medium flash from the Sun! Give your shield some power to help your crew.',
+const M_FLARE: readonly string[] = [
+  'This medium flare is about 10 times stronger than the next smaller class. Shields help your crew.',
+  'Flare light reaches your base in about 8 minutes. Medium flares can bring radiation, so shield up.',
+  'A medium flash from the Sun! Give your shield some power to help your crew.',
 ];
 
-const SMALL_FLARE: readonly ((cls: string) => string)[] = [
-  (cls) => `This ${cls} flare is a small burst of light from the Sun. Your base can relax a bit.`,
-  () => 'Flare light reaches your base in about 8 minutes. Small flares are gentle, so try some science.',
-  () => 'A small flash from the Sun! Small flares are gentle, so your crew can focus on science.',
+const SMALL_FLARE: readonly string[] = [
+  'This small flare is a gentle burst of light from the Sun. Your base can relax a bit.',
+  'Flare light reaches your base in about 8 minutes. Small flares are gentle, so try some science.',
+  'A small flash from the Sun! Small flares are gentle, so your crew can focus on science.',
 ];
 
 const GENERIC_FLARE: readonly string[] = [
@@ -66,64 +69,61 @@ const GENERIC_FLARE: readonly string[] = [
 ];
 
 const CME_WITH_SPEED: readonly ((days: number) => string)[] = [
-  (d) => `At this speed, it would take ${daysPhrase(d)} to cross to the Moon. Strong shields will help your crew.`,
-  (d) => `This CME cloud would take ${daysPhrase(d)} to reach the Moon. In our game it hits your base, so shield up!`,
-  (d) => `Huge Sun cloud! It would take ${daysPhrase(d)} to reach the Moon, so shield up.`,
+  (d) => `A rough guess: this cloud needs ${daysPhrase(d)} to reach the Moon. Strong shields help your crew.`,
+  (d) => `This Sun cloud would take ${daysPhrase(d)} to reach the Moon. In this game it hits your base, so shield up!`,
+  (d) => `Huge Sun cloud! A rough estimate: ${daysPhrase(d)} to reach the Moon, so shield up.`,
 ];
 
 const CME_NO_SPEED: readonly string[] = [
-  'A CME is a huge cloud of gas from the Sun. In our game, it heads for your base, so shield up.',
+  'A huge cloud of gas from the Sun is coming. In this game, it heads for your base, so shield up.',
   'A giant cloud of Sun gas and magnetism is coming. Power your shield to be ready.',
 ];
 
 const QUIET_DAY: readonly string[] = [
-  "NASA's storm log shows no big flares or CMEs this day. Calm days are great for science.",
-  "NASA's records show no big flares or CMEs this day. Great day for science!",
-  'Quiet Sun day: no big flares or CMEs were logged. Your crew can focus on science.',
+  "NASA's storm log shows no big flares or storm clouds this day. Calm days are great for science.",
+  "NASA's records show no big flares or storm clouds this day. Great day for science!",
+  'Calm Sun day: no big flares or storm clouds were logged. Your crew can focus on science.',
 ];
 
 /** Mars flare wording: no "8 minutes" (that is the Earth and Moon light time), no travel claims. */
-const MARS_FLARE: Record<'X' | 'M' | 'small', readonly ((cls: string) => string)[]> = {
+const MARS_FLARE: Record<'X' | 'M' | 'small', readonly string[]> = {
   X: [
-    (cls) => `This ${cls} flare is the strongest kind. Raise your shield to protect your crew.`,
-    () => 'Big flash from the Sun! X is the strongest flare class, so power your shield.',
+    'This flare is the strongest class. Raise your shield to protect your crew.',
+    'Big flash from the Sun! It is the strongest flare class, so power your shield.',
   ],
   M: [
-    (cls) => `This ${cls} flare is about 10 times stronger than a C flare. Shields help your crew.`,
-    () => 'A medium flash from the Sun! Give your shield some power to help your crew.',
+    'This medium flare is about 10 times stronger than the next smaller class. Shields help your crew.',
+    'A medium flash from the Sun! Give your shield some power to help your crew.',
   ],
   small: [
-    (cls) => `This ${cls} flare is a small burst of light from the Sun. Your base can relax a bit.`,
-    () => 'A small flash from the Sun! Small flares are gentle, so your crew can focus on science.',
+    'This small flare is a gentle burst of light from the Sun. Your base can relax a bit.',
+    'A small flash from the Sun! Small flares are gentle, so your crew can focus on science.',
   ],
 };
 
-/** Mars CME wording. 'listed': NASA's model predicted Mars impact. Otherwise a real CME reused by the game. */
-const MARS_CME_LISTED: readonly string[] = [
-  "NASA's space-weather model predicted this CME would reach Mars. Warnings arrive a sol late in our game, so shield early.",
-  'A NASA model predicted this Sun cloud would reach Mars. In our game, warnings come a sol late, so plan ahead.',
-];
-const MARS_CME_GAME_ONLY: readonly string[] = [
-  'NASA recorded this CME. In our game, it also reaches Mars, and warnings come a sol late.',
-  'This CME was recorded by NASA. In our game, it also reaches Mars, so shield early.',
+/**
+ * Mars storm-cloud wording. Whether NASA's model predicted Mars impact is shown once, as the card note
+ * (EVENT.marsListed / EVENT.marsGameOnly), so this text does not repeat it.
+ */
+const MARS_CME: readonly string[] = [
+  'A huge cloud of gas left the Sun. In this game, its warning comes a sol late, so plan ahead.',
+  'A huge cloud of gas and magnetism left the Sun. In this game, warnings come a sol late, so shield early.',
 ];
 
-const MARS_QUIET = "NASA's storm log shows no big flares or CMEs this day.";
+const MARS_QUIET = "NASA's storm log shows no big flares or storm clouds this day.";
 
 function flareText(event: SolarEvent, site: SiteId): string {
-  const cls = (event.flareClass ?? '').trim();
-  const letter = cls.charAt(0).toUpperCase();
-  const label = cls.length > 0 ? cls : `${letter} class`;
+  const letter = (event.flareClass ?? '').trim().charAt(0).toUpperCase();
   const mars = site === 'mars';
-  if (letter === 'X') return pick(mars ? MARS_FLARE.X : X_FLARE, event.id)(label);
-  if (letter === 'M') return pick(mars ? MARS_FLARE.M : M_FLARE, event.id)(label);
-  if (letter === 'C' || letter === 'B' || letter === 'A') return pick(mars ? MARS_FLARE.small : SMALL_FLARE, event.id)(label);
+  if (letter === 'X') return pick(mars ? MARS_FLARE.X : X_FLARE, event.id);
+  if (letter === 'M') return pick(mars ? MARS_FLARE.M : M_FLARE, event.id);
+  if (letter === 'C' || letter === 'B' || letter === 'A') return pick(mars ? MARS_FLARE.small : SMALL_FLARE, event.id);
   return pick(GENERIC_FLARE, event.id);
 }
 
 function cmeText(event: SolarEvent, site: SiteId): string {
   if (site === 'mars') {
-    return pick(event.marsImpact === 'listed' ? MARS_CME_LISTED : MARS_CME_GAME_ONLY, event.id);
+    return pick(MARS_CME, event.id);
   }
   const speed = event.cmeSpeedKms;
   if (typeof speed === 'number' && Number.isFinite(speed) && speed > 0) {
