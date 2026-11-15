@@ -181,6 +181,9 @@ export type VerdictKind =
   | 'hurt'
   | 'airLow'
   | 'batteryEmpty'
+  | 'batteryEmptyCalm'
+  | 'noShields'
+  | 'airNone'
   | 'batteryLow'
   | 'bigStorm'
   | 'blocked'
@@ -190,13 +193,16 @@ export type VerdictKind =
   | 'calmNoScience';
 
 export const VERDICT_TEXT: Record<VerdictKind, (dayWord: DayWord) => string> = {
-  lostCrew: () => 'Oh no! The storm hurt your crew too much.',
-  lostAir: () => 'Oh no! Air & food ran out.',
+  lostCrew: () => 'Oh no! The storm hurt your crew too much. The mission is over.',
+  lostAir: () => 'Oh no! Air & food ran out. The mission is over.',
   hurt: () => 'Ouch, low shields. Your crew got hurt by the storm.',
   airLow: () => 'Air was low. Give Air & food at least 4 power.',
   batteryEmpty: () => 'The battery ran out, so shields were weak. Give Air & food more power.',
+  batteryEmptyCalm: () => 'The battery ran out! Give Air & food more power so it can recharge.',
+  noShields: () => 'Ouch, no shields! The storm hurt your crew.',
+  airNone: (w) => `No power for air! Air & food will drop a lot next ${w}.`,
   batteryLow: () => 'Battery is low! Put more power into Air & food so it can recharge.',
-  bigStorm: () => 'A big storm! Your shields blocked most of it.',
+  bigStorm: () => 'A strong storm! Your shields blocked most of it.',
   blocked: () => 'Great call! Your shields stopped the storm.',
   mostlyBlocked: () => 'Good call! Your shields blocked most of the storm.',
   shieldsWasted: (w) =>
@@ -213,6 +219,9 @@ export const VERDICT_TONE: Record<VerdictKind, VerdictTone> = {
   hurt: 'bad',
   airLow: 'bad',
   batteryEmpty: 'bad',
+  batteryEmptyCalm: 'bad',
+  noShields: 'bad',
+  airNone: 'bad',
   batteryLow: 'bad',
   bigStorm: 'ok',
   blocked: 'good',
@@ -265,8 +274,11 @@ export const END = {
   lostTitle: 'Mission over.',
   lostTitleOn: (dayWord: DayWord, day: number) => `Mission over on ${dayWord} ${day}.`,
   lostRescue: 'Mission Control flew the crew home safely.',
+  /** Game-rule rating for the science score (balance report: a careful plan scores about 145). */
+  scoreRating: (score: number) =>
+    score >= 130 ? 'Top scientist!' : score >= 90 ? 'Great science!' : score >= 40 ? 'Good start!' : 'Try more science next time.',
   wonWhy: (crew: string, days: number, dayWord: DayWord) =>
-    `Crew ${crew} stayed safe for all ${days} ${dayWord}s.`,
+    `Crew ${crew} made it through all ${days} ${dayWord}s.`,
   lostWhyCrew: 'Crew health reached 0. Storm radiation hurt the crew too much.',
   lostWhyAir: 'Air & food reached 0. It needs at least 4 power every day.',
   scoreLabel: 'Science score',

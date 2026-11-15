@@ -109,8 +109,40 @@ describe('ResolutionScreen', () => {
         }),
       );
       expect(
+        screen.getByText('The battery ran out! Give Air & food more power so it can recharge.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/shields were weak/)).toBeNull();
+    });
+
+    it('battery empty on a storm day with shields up: blames the battery for weak shields', () => {
+      show(
+        makeResult({
+          dose: { incoming: 30, blocked: 6, received: 24 },
+          before: { power: 10, lifeSupport: 70, crewHealth: 90 },
+          after: { power: 0, lifeSupport: 70, crewHealth: 60 },
+        }),
+      );
+      expect(
         screen.getByText('The battery ran out, so shields were weak. Give Air & food more power.'),
       ).toBeInTheDocument();
+    });
+
+    it('no shields on a storm day: says so, even when the battery is empty', () => {
+      show(
+        makeResult({
+          allocation: { life: 4, shield: 0, science: 6 },
+          dose: { incoming: 45, blocked: 0, received: 45 },
+          before: { power: 10, lifeSupport: 70, crewHealth: 90 },
+          after: { power: 0, lifeSupport: 70, crewHealth: 45 },
+        }),
+      );
+      expect(screen.getByText('Ouch, no shields! The storm hurt your crew.')).toBeInTheDocument();
+      expect(screen.queryByText(/shields were weak/)).toBeNull();
+    });
+
+    it('no power for air: says air will drop a lot', () => {
+      show(makeResult({ allocation: { life: 0, shield: 5, science: 5 }, dose: { incoming: 24, blocked: 20, received: 4 } }));
+      expect(screen.getByText('No power for air! Air & food will drop a lot next day.')).toBeInTheDocument();
     });
 
     it('battery empty beats hurt on a storm day', () => {
@@ -142,8 +174,8 @@ describe('ResolutionScreen', () => {
     });
 
     it('big storm: shields blocked most of it, okay tone with a word', () => {
-      const { container } = show(makeResult({ dose: { incoming: 30, blocked: 15, received: 15 } }));
-      expect(screen.getByText('A big storm! Your shields blocked most of it.')).toBeInTheDocument();
+      const { container } = show(makeResult({ dose: { incoming: 30, blocked: 20, received: 10 } }));
+      expect(screen.getByText('A strong storm! Your shields blocked most of it.')).toBeInTheDocument();
       expect(container.querySelector('.res-verdict-ok')).not.toBeNull();
       expect(screen.getByText('Okay')).toBeInTheDocument();
     });
@@ -152,7 +184,7 @@ describe('ResolutionScreen', () => {
       const { rerender } = show(
         makeResult({ statusAfter: 'ended', after: { power: 50, lifeSupport: 60, crewHealth: 0 } }),
       );
-      expect(screen.getByText('Oh no! The storm hurt your crew too much.')).toBeInTheDocument();
+      expect(screen.getByText('Oh no! The storm hurt your crew too much. The mission is over.')).toBeInTheDocument();
       rerender(
         <ResolutionScreen
           result={makeResult({ statusAfter: 'ended', after: { power: 50, lifeSupport: 0, crewHealth: 40 } })}
@@ -160,7 +192,7 @@ describe('ResolutionScreen', () => {
           onContinue={() => {}}
         />,
       );
-      expect(screen.getByText('Oh no! Air & food ran out.')).toBeInTheDocument();
+      expect(screen.getByText('Oh no! Air & food ran out. The mission is over.')).toBeInTheDocument();
     });
   });
 

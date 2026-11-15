@@ -61,19 +61,17 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
         <p className="end-outcome">{why}</p>
         {!won && <p className="end-rescue">{END.lostRescue}</p>}
 
-        <div className="card stack end-score-card">
-          <p className="end-score">
-            <span aria-hidden="true">
-              {NAMES.science} ★ {game.scienceScore}
-            </span>
-            <span className="visually-hidden">
-              {END.scoreLabel}: {game.scienceScore}
-            </span>
-          </p>
-          <Meters meters={game.meters} scienceScore={game.scienceScore} />
-        </div>
+        <p className="end-score">
+          <span className="end-score-number" aria-hidden="true">
+            {NAMES.science} ★ {game.scienceScore}
+          </span>
+          <span className="visually-hidden">
+            {END.scoreLabel}: {game.scienceScore}
+          </span>
+          <span className="end-rating">{END.scoreRating(game.scienceScore)}</span>
+        </p>
 
-        <div className="card stack">
+        <div className="end-learned">
           <h2>{END.learnedTitle}</h2>
           <p className="debrief-tip">{LEARN_TEXT[lessonFor(game.history, site)]}</p>
         </div>
@@ -83,6 +81,10 @@ export function EndScreen({ game, crewName, onPlayAgain, fact = null }: EndScree
             {END.playAgain}
           </button>
           <p className="debrief-meta">{END.playAgainNote}</p>
+        </div>
+
+        <div className="card stack end-meters">
+          <Meters meters={game.meters} scienceScore={game.scienceScore} />
         </div>
       </div>
 

@@ -62,9 +62,13 @@ describe('verdictFor', () => {
       verdictFor(r({ dose: { incoming: 30, blocked: 31 - HURT_THRESHOLD, received: HURT_THRESHOLD - 1 } })),
     ).toBe('mostlyBlocked');
   });
-  it('bigStorm when 10 or more got through but shields blocked at least as much', () => {
-    expect(verdictFor(r({ dose: { incoming: 30, blocked: 15, received: 15 } }))).toBe('bigStorm');
+  it('bigStorm only when 10 or more got through and shields blocked MORE than got through', () => {
     expect(verdictFor(r({ dose: { incoming: 40, blocked: 30, received: HURT_THRESHOLD } }))).toBe('bigStorm');
+    expect(verdictFor(r({ dose: { incoming: 31, blocked: 16, received: 15 } }))).toBe('bigStorm');
+  });
+  it('hurt when blocked equals received (about half got through)', () => {
+    expect(verdictFor(r({ dose: { incoming: 30, blocked: 15, received: 15 } }))).toBe('hurt');
+    expect(verdictFor(r({ dose: { incoming: 40, blocked: 20, received: 20 } }))).toBe('hurt');
   });
   it('battery empty beats hurt', () => {
     expect(
@@ -91,8 +95,50 @@ describe('verdictFor', () => {
       'airLow',
     );
   });
-  it('battery empty', () => {
-    expect(verdictFor(r({ dose: calm, after: { power: 0, lifeSupport: 70, crewHealth: 90 } }))).toBe('batteryEmpty');
+  it('battery empty on a calm day is batteryEmptyCalm (shields did not matter)', () => {
+    expect(verdictFor(r({ dose: calm, after: { power: 0, lifeSupport: 70, crewHealth: 90 } }))).toBe(
+      'batteryEmptyCalm',
+    );
+  });
+  it('battery empty on a storm day with 0 shields and a tiny storm is batteryEmptyCalm', () => {
+    expect(
+      verdictFor(
+        r({
+          allocation: { life: 4, shield: 0, science: 6 },
+          dose: { incoming: 5, blocked: 0, received: 5 },
+          after: { power: 0, lifeSupport: 70, crewHealth: 90 },
+        }),
+      ),
+    ).toBe('batteryEmptyCalm');
+  });
+  it('battery empty on a storm day with shields up is batteryEmpty', () => {
+    expect(
+      verdictFor(
+        r({ dose: { incoming: 30, blocked: 6, received: 24 }, after: { power: 0, lifeSupport: 70, crewHealth: 60 } }),
+      ),
+    ).toBe('batteryEmpty');
+  });
+  it('noShields: a storm got through and shields had 0 power; it beats an empty battery', () => {
+    const noShield = { life: 4, shield: 0, science: 6 };
+    expect(verdictFor(r({ allocation: noShield, dose: { incoming: 45, blocked: 0, received: 45 } }))).toBe('noShields');
+    expect(
+      verdictFor(
+        r({
+          allocation: noShield,
+          dose: { incoming: 45, blocked: 0, received: 45 },
+          after: { power: 0, lifeSupport: 70, crewHealth: 45 },
+        }),
+      ),
+    ).toBe('noShields');
+    // A tiny storm (under 10 got through) is not worth the noShields scolding.
+    expect(verdictFor(r({ allocation: noShield, dose: { incoming: 5, blocked: 0, received: 5 } }))).not.toBe('noShields');
+  });
+  it('airNone: 0 power for Air & food beats airLow and bigStorm, but not hurt', () => {
+    const noAir = { life: 0, shield: 5, science: 5 };
+    expect(verdictFor(r({ dose: calm, allocation: noAir }))).toBe('airNone');
+    expect(verdictFor(r({ allocation: noAir, dose: { incoming: 40, blocked: 30, received: 10 } }))).toBe('airNone');
+    expect(verdictFor(r({ allocation: noAir, dose: { incoming: 40, blocked: 10, received: 30 } }))).toBe('hurt');
+    expect(verdictFor(r({ dose: calm, allocation: { life: 2, shield: 4, science: 4 } }))).toBe('airLow');
   });
   it('calm days', () => {
     expect(verdictFor(r({ dose: calm }))).toBe('shieldsWasted');

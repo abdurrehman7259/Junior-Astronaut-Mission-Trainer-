@@ -74,10 +74,34 @@
 }
 .end-score {
   margin: 0;
-  font-size: 2.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+}
+.end-score-number {
+  font-size: 2rem;
   font-weight: 800;
   line-height: 1.1;
   color: var(--color-science);
+}
+.end-rating {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+.end-learned {
+  width: 100%;
+}
+.end-learned h2 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-lg);
+}
+.end-meters {
+  width: 100%;
+}
+/* Play again stays near the top: summary, score, lesson and the button all fit one screen. */
+.end-summary.stack {
+  gap: var(--space-3);
 }
 .end-timeline,
 .end-fact,

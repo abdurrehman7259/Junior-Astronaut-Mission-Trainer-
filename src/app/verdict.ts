@@ -12,19 +12,23 @@ export const HURT_THRESHOLD = 10;
 /** Battery at or below this after a day gets a warning before it runs out (cold-start test: it drained silently). */
 export const BATTERY_LOW = 20;
 
-/** Shields were really too low: much got through AND they blocked less than got through. */
+/** Shields were really too low: much got through AND they did not block more than got through. */
 function shieldsTooLow(r: TurnResult): boolean {
-  return r.dose.received >= HURT_THRESHOLD && r.dose.blocked < r.dose.received;
+  return r.dose.received >= HURT_THRESHOLD && r.dose.blocked <= r.dose.received;
 }
 
 export function verdictFor(r: TurnResult, _site: SiteId = 'moon'): VerdictKind {
   const storm = r.dose.incoming > 0;
   if (r.statusAfter === 'ended') return r.after.crewHealth <= 0 ? 'lostCrew' : 'lostAir';
-  // An empty battery weakens shields, so blame the battery, not the shield choice (cold-start finding 1).
-  if (r.after.power === 0) return 'batteryEmpty';
+  // No shields at all on a storm day: say so plainly (cold-start round 2).
+  if (storm && r.allocation.shield === 0 && r.dose.received >= HURT_THRESHOLD) return 'noShields';
+  // An empty battery weakens shields: blame the battery, and only mention shields when it was a storm with shields up.
+  if (r.after.power === 0) return storm && r.allocation.shield > 0 ? 'batteryEmpty' : 'batteryEmptyCalm';
   if (storm && shieldsTooLow(r)) return 'hurt';
-  if (storm && r.dose.received >= HURT_THRESHOLD) return 'bigStorm';
+  // Too little air ends missions, so it beats every softer verdict.
+  if (r.allocation.life === 0) return 'airNone';
   if (r.allocation.life < AIR_MIN_UNITS) return 'airLow';
+  if (storm && r.dose.received >= HURT_THRESHOLD) return 'bigStorm';
   if (r.after.power <= BATTERY_LOW) return 'batteryLow';
   if (storm) return r.dose.received === 0 ? 'blocked' : 'mostlyBlocked';
   if (r.allocation.shield > 0) return 'shieldsWasted';

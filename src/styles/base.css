@@ -293,3 +293,24 @@ a {
     scroll-behavior: auto !important;
   }
 }
+
+/* Phones: a tighter header and page padding so the day screen's power controls start high up (cold-start round 2). */
+@media (max-width: 767px) {
+  .app-header-inner {
+    gap: var(--space-1) var(--space-3);
+    padding-block: var(--space-1);
+  }
+  .app-brand {
+    gap: 0 var(--space-3);
+  }
+  .app-header-actions {
+    gap: var(--space-1) var(--space-2);
+  }
+  .app-header-actions .btn {
+    min-height: 44px;
+    padding: var(--space-1) var(--space-3);
+  }
+  .app-main {
+    padding-block: var(--space-3);
+  }
+}

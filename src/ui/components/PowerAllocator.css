@@ -228,9 +228,22 @@
   }
 }
 
-/* Wide screens: heading and hint on the left, button on the right. One short row. */
+/* Wide screens: heading and hint on the left, button on the right. One short row.
+   Also sticky at the bottom of the viewport: if a warning pushes the row below the fold (1280x720),
+   the browser pulls it back into view instead of cutting it off. Compact warnings keep that rare. */
 @media (min-width: 1024px) {
+  .pa-warning {
+    padding-block: 2px;
+  }
   .pa-start {
+    position: sticky;
+    bottom: 0;
+    z-index: 5;
+    padding: var(--space-1) var(--space-3);
+    background: var(--color-surface);
+    border: 2px solid var(--color-border);
+    border-radius: var(--radius-md);
+    box-shadow: 0 -4px 12px rgb(0 0 0 / 0.25);
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
@@ -248,5 +261,25 @@
     grid-row: 1 / span 2;
     min-width: 12rem;
     min-height: 52px;
+  }
+}
+
+/* Phones: a tighter allocator card, so the first system row starts early. */
+@media (max-width: 767px) {
+  .pa {
+    gap: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+  }
+  .pa-heading {
+    font-size: 1.125rem;
+  }
+  .pa-pool {
+    padding: 0 var(--space-3);
+  }
+  .pa-rows {
+    gap: var(--space-1);
+  }
+  .pa-row {
+    padding: var(--space-1) var(--space-2);
   }
 }

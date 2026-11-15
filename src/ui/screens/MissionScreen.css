@@ -106,3 +106,35 @@
     align-items: start;
   }
 }
+
+/* Phones: a compact step 1 so step 2 (the power controls) starts inside the first 812 px at 375 px wide.
+   Everything stays: real-data labels, the real date, the badge, the NASA link, the kid sentence. */
+@media (max-width: 767px) {
+  .mission.stack {
+    gap: var(--space-2);
+  }
+  .mission .mission-grid {
+    gap: var(--space-2);
+  }
+  .mission-head {
+    flex-wrap: nowrap;
+    align-items: baseline;
+    gap: var(--space-3);
+  }
+  .mission-head h1 {
+    font-size: 1.375rem;
+    white-space: nowrap;
+  }
+  .mission-crew {
+    min-width: 0;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-tight);
+    text-align: end;
+  }
+  .mission-step {
+    font-size: 1.125rem;
+  }
+  .mission-col-left .card {
+    padding: var(--space-2) var(--space-3);
+  }
+}

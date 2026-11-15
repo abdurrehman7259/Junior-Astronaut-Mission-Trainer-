@@ -70,3 +70,17 @@
   color: var(--color-text-muted);
   font-weight: 600;
 }
+
+/* Phones: tighter card so the power controls start higher. */
+@media (max-width: 767px) {
+  .earth-msg {
+    gap: var(--space-1);
+  }
+  .earth-msg-title {
+    font-size: 1.125rem;
+  }
+  .earth-msg-list {
+    gap: 0;
+    line-height: 1.35;
+  }
+}

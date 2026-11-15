@@ -63,7 +63,7 @@ describe('EndScreen', () => {
   it('won: outcome title, one why sentence, then score, meters, lesson, timeline, play again', () => {
     render(<EndScreen game={game(hist)} crewName="Nova" onPlayAgain={() => {}} fact={fact} />);
     expect(screen.getByRole('heading', { level: 1, name: 'You made it!' })).toBeInTheDocument();
-    expect(screen.getByText('Crew Nova stayed safe for all 3 days.')).toBeInTheDocument();
+    expect(screen.getByText('Crew Nova made it through all 3 days.')).toBeInTheDocument();
     expect(screen.getByText('Science ★ 42')).toBeInTheDocument();
     expect(screen.getByText('Science score: 42')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'What you learned' })).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('EndScreen', () => {
 
   it('Mars: uses sol wording', () => {
     render(<EndScreen game={game(hist, 'won', 'mars')} crewName="Nova" onPlayAgain={() => {}} />);
-    expect(screen.getByText('Crew Nova stayed safe for all 3 sols.')).toBeInTheDocument();
+    expect(screen.getByText('Crew Nova made it through all 3 sols.')).toBeInTheDocument();
     const rows = within(screen.getByRole('list', { name: 'Sol by sol' })).getAllByRole('listitem');
     expect(within(rows[0]!).getByText('Sol 1')).toBeInTheDocument();
     expect(screen.queryByText(/Day 1/)).toBeNull();

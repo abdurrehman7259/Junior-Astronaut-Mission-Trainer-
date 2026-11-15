@@ -117,3 +117,37 @@
   font-weight: 700;
   color: var(--color-text-muted);
 }
+
+/* Phones: tighter card. "More details" and the NASA link share one row. */
+@media (max-width: 767px) {
+  .event-card {
+    gap: var(--space-1);
+  }
+  .event-card-title {
+    font-size: 1.125rem;
+  }
+  .event-badge {
+    padding: 0 var(--space-2);
+    gap: var(--space-1);
+  }
+  .event-facts {
+    gap: 0 var(--space-4);
+  }
+  .event-fact {
+    gap: var(--space-1);
+  }
+  .event-text {
+    line-height: 1.35;
+  }
+  .event-actions {
+    flex-wrap: nowrap;
+    gap: var(--space-3);
+  }
+  .event-more {
+    min-height: 44px;
+    padding: 0 var(--space-3);
+  }
+  .event-link {
+    min-height: 44px;
+  }
+}
