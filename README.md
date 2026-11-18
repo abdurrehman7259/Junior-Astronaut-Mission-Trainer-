@@ -31,7 +31,7 @@ All data is stored as snapshots and labelled "Archived (retrieved 2026-11-14)" i
 
 ## Tech stack
 
-TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Static hosting on Vercel; the live banner reads NASA DONKI directly from the browser.
+TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Hosted on Vercel; the live banner reads NASA DONKI through our own `/api/donki` function, so players' browsers never contact a third party.
 
 ## Getting started
 

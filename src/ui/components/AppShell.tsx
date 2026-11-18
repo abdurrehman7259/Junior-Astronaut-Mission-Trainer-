@@ -73,6 +73,10 @@ export function AppShell({
           <p>
             Solar events are real NASA DONKI records. Game numbers are game rules, not real measurements.
           </p>
+          <p>
+            Privacy: no sign-up, no cookies, no ads and no tracking. Your crew name and progress stay on this
+            device.
+          </p>
         </div>
       </footer>
     </>

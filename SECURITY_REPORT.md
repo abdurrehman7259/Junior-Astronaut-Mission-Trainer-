@@ -43,5 +43,6 @@ Passwords, MFA, RLS/IDOR, JWT, SQL/NoSQL, CSRF, webhooks, open redirects and COR
 - **Before going public:** keep local archives and presentation files out of the repo (they are gitignored).
 
 ## 6. Remaining risks
-- Each player's browser contacts `ccmc.gsfc.nasa.gov` once per visit for the live banner. NASA sees the player's IP address and browser user agent, but no referrer and no cookies.
+- Resolved by D-041 (18 Nov 2026): the live banner now goes through our same-origin Vercel Function `api/donki.ts`. Players' browsers never contact `ccmc.gsfc.nasa.gov`; NASA sees only Vercel's server, with no player IP address, user agent, referrer or cookies. CSP is now `connect-src 'self'`.
+- The proxy accepts only `type=FLR|CME` and a date window ending within 2 days of today and at most 8 days long, so very few distinct URLs exist; the CDN caches each for 15 minutes, which bounds NASA calls and function runs.
 - NASA's API is often slow. The game then shows the archived snapshot and labels it "archived".

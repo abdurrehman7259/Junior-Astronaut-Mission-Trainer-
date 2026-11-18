@@ -23,21 +23,22 @@ const cme = {
   cmeAnalyses: [{ isMostAccurate: true, speed: 1200 }],
 };
 
-/** Answers FLR and CME requests from the fixed DONKI URLs. */
+/** Answers FLR and CME requests to our same-origin proxy. */
 function donki(flares: unknown, cmes: unknown) {
-  return vi.fn((url: string) => (url.includes('/FLR?') ? jsonRes(flares) : jsonRes(cmes)));
+  return vi.fn((url: string) => (url.includes('type=FLR') ? jsonRes(flares) : jsonRes(cmes)));
 }
 
 describe('liveUrls', () => {
-  it('builds exactly two fixed NASA URLs for the last 7 days', () => {
+  it('builds exactly two fixed same-origin proxy URLs for the last 7 days (D-041)', () => {
     const u = liveUrls(NOW);
-    expect(u.FLR).toBe(`${DONKI_LIVE_BASE}FLR?startDate=2026-11-07&endDate=2026-11-14`);
-    expect(u.CME).toBe(`${DONKI_LIVE_BASE}CME?startDate=2026-11-07&endDate=2026-11-14`);
-    expect(new URL(u.FLR).origin).toBe('https://ccmc.gsfc.nasa.gov');
+    expect(u.FLR).toBe('/api/donki?type=FLR&startDate=2026-11-07&endDate=2026-11-14');
+    expect(u.CME).toBe('/api/donki?type=CME&startDate=2026-11-07&endDate=2026-11-14');
+    // Relative URLs: the browser only ever talks to our own host, never to NASA directly.
+    for (const url of [u.FLR, u.CME]) expect(new URL(url, 'https://our.host').origin).toBe('https://our.host');
   });
 });
 
-describe('fetchLiveSpaceWeather (browser, straight from NASA DONKI)', () => {
+describe('fetchLiveSpaceWeather (browser, via our same-origin proxy)', () => {
   it('returns live data mapped from both feeds, with safe fetch options', async () => {
     const fetchMock = donki([flare], [cme]);
     vi.stubGlobal('fetch', fetchMock);
@@ -106,7 +107,7 @@ describe('fetchLiveSpaceWeather cleanup (SEC-D)', () => {
   it('aborts the other feed when one fails early', async () => {
     let otherSignal: AbortSignal | undefined;
     vi.stubGlobal('fetch', (url: string, init: RequestInit) => {
-      if (url.includes('/FLR?')) return jsonRes({}, 500);
+      if (url.includes('type=FLR')) return jsonRes({}, 500);
       otherSignal = init.signal ?? undefined;
       return new Promise((_res, rej) => init.signal?.addEventListener('abort', () => rej(new DOMException('aborted', 'AbortError'))));
     });

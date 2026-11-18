@@ -21,8 +21,9 @@ describe('deployed header configuration', () => {
     const entries = csp!.split(';').map((part) => part.trim().split(/\s+/));
     const directives = new Map(entries.map(([key, ...tokens]) => [key, tokens]));
     expect(directives.size).toBe(entries.length);
-    // connect-src: our host plus exactly NASA's keyless DONKI API for the live banner (D-040).
-    expect(directives.get('connect-src')).toEqual(["'self'", 'https://ccmc.gsfc.nasa.gov']);
+    // connect-src: our host only. The live banner reaches NASA through the same-origin proxy api/donki.ts (D-041).
+    expect(directives.get('connect-src')).toEqual(["'self'"]);
+    expect(csp).not.toContain('ccmc.gsfc.nasa.gov');
     for (const name of ['default-src', 'script-src', 'base-uri', 'form-action']) {
       expect(directives.get(name), name).toEqual(["'self'"]);
     }

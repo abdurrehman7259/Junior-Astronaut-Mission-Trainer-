@@ -38,8 +38,8 @@ export function scanOrigins(file: string, content: string, serverFunction = fals
       const interpolatedPrefix = built && url.includes('${');
       const schemaReference = built && /^https?:\/\/json-schema\.org\/draft(?:\/2020-12\/schema|-0[47]\/schema#)$/.test(url);
       const nasaLink = officialHost && !requestContext;
-      // D-040: the live banner calls NASA's keyless DONKI API from the browser, only from src/app/live.ts.
-      const proxy = (serverFunction || normalizedFile === 'src/app/live.ts') && host === 'ccmc.gsfc.nasa.gov';
+      // D-041: only the server-side proxy (api/donki.ts) may request NASA's DONKI API; browser code never does.
+      const proxy = serverFunction && host === 'ccmc.gsfc.nasa.gov';
       if (!nasaLink && !proxy && !allowedLiteral && !interpolatedPrefix && !schemaReference) findings.push({ file, line: index + 1, message: `Disallowed external URL: ${url}` });
     }
   });
@@ -84,8 +84,9 @@ export function scanCsp(vercelJson: string): string[] {
   }
   const value = (key: string) => all.find((h) => h.key === key)?.value ?? '';
   const csp = value('Content-Security-Policy');
-  if (!/connect-src 'self' https:\/\/ccmc\.gsfc\.nasa\.gov(;|$)/.test(csp)) {
-    issues.push("CSP connect-src must be exactly 'self' https://ccmc.gsfc.nasa.gov");
+  // D-041: the browser connects only to our own host; NASA is reached through api/donki.ts.
+  if (!/connect-src 'self'(;|$)/.test(csp)) {
+    issues.push("CSP connect-src must be exactly 'self'");
   }
   for (const needed of ["script-src 'self'", "frame-ancestors 'none'"]) {
     if (!csp.includes(needed)) issues.push(`CSP missing ${needed}`);
@@ -122,6 +123,8 @@ export function scanData(content: string): string[] {
 const lineFindings = (files: string[], scanner: (file: string, text: string) => Finding[]): Finding[] => files.flatMap((file) => scanner(file, readFileSync(file, 'utf8')));
 const root = process.cwd();
 const sourceFiles = [...walk(join(root, 'src')), join(root, 'index.html')].filter((file) => /\.(tsx?|jsx?|html)$/.test(file));
+/** Server-side Vercel Functions (D-041). They may call NASA's DONKI API and nothing else. */
+const functionFiles = walk(join(root, 'api')).filter((file) => /\.(tsx?|jsx?)$/.test(file));
 
 describe('privacy scanners', () => {
   it('allows link-only official origins and rejects third parties or client requests', () => {
@@ -130,6 +133,12 @@ describe('privacy scanners', () => {
     expect(scanOrigins('src/a.ts', 'const link = "https://alerts.swpc.noaa.gov/x"')).toEqual([]);
     expect(scanOrigins('src/a.ts', 'fetch("https://science.nasa.gov/x")')[0]?.line).toBe(1);
     expect(scanOrigins('src/a.ts', 'const link = "https://evil.example/x"')[0]?.line).toBe(1);
+  });
+  it('allows NASA DONKI requests only in the server-side proxy (D-041)', () => {
+    const request = 'const res = await fetch("https://ccmc.gsfc.nasa.gov/DONKI-API/get/FLR")';
+    expect(scanOrigins('src/app/live.ts', request)).toHaveLength(1);
+    expect(scanOrigins('api/donki.ts', request, true)).toEqual([]);
+    expect(scanOrigins('api/donki.ts', 'fetch("https://evil.example/x")', true)).toHaveLength(1);
   });
   it('allows known bundle string constants but rejects them in request contexts', () => {
     const literals = [
@@ -169,7 +178,8 @@ describe('privacy scanners', () => {
         ],
       });
     expect(scanCsp('not json')).not.toEqual([]);
-    expect(scanCsp(vercel("'self' https://ccmc.gsfc.nasa.gov"))).toEqual([]);
+    expect(scanCsp(vercel("'self'"))).toEqual([]);
+    expect(scanCsp(vercel("'self' https://ccmc.gsfc.nasa.gov"))).not.toEqual([]);
     expect(scanCsp(vercel("'self' https://ccmc.gsfc.nasa.gov https://api.nasa.gov"))).not.toEqual([]);
     expect(scanCsp(vercel('*'))).not.toEqual([]);
   });
@@ -184,6 +194,8 @@ describe('shipped privacy guard', () => {
     const findings = [
       ...lineFindings(sourceFiles, (file, text) => scanOrigins(relative(root, file).replaceAll('\\', '/'), text, false)),
       ...lineFindings(sourceFiles, scanTracking),
+      ...lineFindings(functionFiles, (file, text) => scanOrigins(relative(root, file).replaceAll('\\', '/'), text, true)),
+      ...lineFindings(functionFiles, scanTracking),
     ];
     for (const file of sourceFiles) {
       const text = readFileSync(file, 'utf8');

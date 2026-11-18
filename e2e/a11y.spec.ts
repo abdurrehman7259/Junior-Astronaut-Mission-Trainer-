@@ -1,9 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-// D-040: the live banner calls NASA DONKI from the browser. Tests never depend on NASA being up:
+// D-041: the live banner calls our same-origin proxy /api/donki, never NASA directly. Tests never depend on NASA:
 // the request is answered with an error, so the game shows its archived snapshot (honest fallback).
 test.beforeEach(async ({ page }) => {
-  await page.route('https://ccmc.gsfc.nasa.gov/**', (route) => route.fulfill({ status: 503, body: '[]' }));
+  await page.route((url) => url.pathname === '/api/donki', (route) => route.fulfill({ status: 503, body: '[]' }));
 });
 
 // F9: accessibility and responsive pass (WCAG 2.2 AA basics, NFR-05, NFR-07, NFR-08).

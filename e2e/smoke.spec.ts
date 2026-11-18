@@ -1,10 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
-// D-040: the live banner calls NASA DONKI from the browser. Tests never depend on NASA being up:
+// D-041: the live banner calls our same-origin proxy /api/donki, never NASA directly. Tests never depend on NASA:
 // the request is answered with an error, so the game shows its archived snapshot (honest fallback).
 test.beforeEach(async ({ page }) => {
-  await page.route('https://ccmc.gsfc.nasa.gov/**', (route) => route.fulfill({ status: 503, body: '[]' }));
+  await page.route((url) => url.pathname === '/api/donki', (route) => route.fulfill({ status: 503, body: '[]' }));
 });
 
 test.setTimeout(120_000);
@@ -153,9 +153,9 @@ test('Privacy: same-origin only, no cookies, mbc. storage', async ({ page, conte
   await playOut(page, 'moon');
   await expectEnd(page);
 
-  // Only our host, plus NASA's DONKI API for the live banner (D-040).
+  // Only our host: the live banner goes through our own /api/donki proxy (D-041).
   const external = urls.filter(
-    (u) => !u.startsWith('data:') && !u.startsWith('blob:') && !['http://localhost:4174', 'https://ccmc.gsfc.nasa.gov'].includes(new URL(u).origin),
+    (u) => !u.startsWith('data:') && !u.startsWith('blob:') && new URL(u).origin !== 'http://localhost:4174',
   );
   expect(external).toEqual([]);
   expect(await context.cookies()).toHaveLength(0);

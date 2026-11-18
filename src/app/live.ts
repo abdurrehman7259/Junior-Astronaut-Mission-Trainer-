@@ -5,12 +5,11 @@ import type { LiveSpaceWeather, SolarEvent } from '../shared/types';
 import { isStubEvent } from './stub-events';
 
 /**
- * Live space weather straight from NASA's keyless CCMC DONKI API (D-040: static hosting, no server function).
- * The API sends `Access-Control-Allow-Origin: *`. Only these two fixed URLs are ever requested; nothing from
- * the player goes into them. The CSP allows exactly this origin in connect-src.
+ * Live space weather from NASA's keyless CCMC DONKI API, through our own same-origin proxy (`api/donki.ts`,
+ * D-041). The browser never contacts NASA, so a player's IP address is not sent to a third party. Only these
+ * two fixed URLs are ever requested; nothing from the player goes into them. The CSP is connect-src 'self'.
  */
-export const DONKI_ORIGIN = 'https://ccmc.gsfc.nasa.gov';
-export const DONKI_LIVE_BASE = `${DONKI_ORIGIN}/DONKI-API/get/`;
+export const DONKI_LIVE_BASE = '/api/donki';
 export const LIVE_TIMEOUT_MS = 3000;
 /** Operational limits (security audit F1), not game rules. */
 export const LIVE_LIMIT_BYTES = 1_048_576;
@@ -21,8 +20,9 @@ export function liveUrls(now: Date): { FLR: string; CME: string } {
   const end = now.toISOString().slice(0, 10);
   const startDay = new Date(now.getTime());
   startDay.setUTCDate(startDay.getUTCDate() - 7);
-  const params = new URLSearchParams({ startDate: startDay.toISOString().slice(0, 10), endDate: end });
-  return { FLR: `${DONKI_LIVE_BASE}FLR?${params}`, CME: `${DONKI_LIVE_BASE}CME?${params}` };
+  const url = (type: 'FLR' | 'CME') =>
+    `${DONKI_LIVE_BASE}?${new URLSearchParams({ type, startDate: startDay.toISOString().slice(0, 10), endDate: end })}`;
+  return { FLR: url('FLR'), CME: url('CME') };
 }
 
 /** Reads at most LIVE_LIMIT_BYTES of JSON; larger bodies are rejected. */
