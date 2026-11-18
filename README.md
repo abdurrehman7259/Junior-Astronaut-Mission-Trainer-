@@ -4,7 +4,7 @@ Run a Moon base. Survive real solar storms.
 
 ## Live demo
 
-`<LIVE_URL>`
+[https://junior-astronaut-mission-trainer-eight.vercel.app](https://junior-astronaut-mission-trainer-eight.vercel.app)
 
 ## What it is
 
