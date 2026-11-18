@@ -27,13 +27,13 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Typecheck
-        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
       - name: Test
         run: npm test
       - name: Build
         run: npm run build
       - name: Security proof on built output
-        run: npx vitest run --config tests/security/vitest.config.ts
+        run: npx vitest run --config tests/security/vitest.config.js
       - name: Privacy guard on built output
-        run: npx vitest run tests/scripts/privacy.test.ts
+        run: npx vitest run tests/scripts/privacy.test.js

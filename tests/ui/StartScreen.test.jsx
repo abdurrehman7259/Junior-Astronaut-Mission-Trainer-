@@ -1,0 +1,163 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { StartScreen } from '../../src/ui/screens/StartScreen.jsx';
+import { loadCrewName, sanitizeCrewName, saveCrewName } from '../../src/ui/screens/crewName.js';
+
+beforeEach(() => localStorage.clear());
+afterEach(() => vi.restoreAllMocks());
+
+describe('sanitizeCrewName', () => {
+  it('strips disallowed characters and caps at 12', () => {
+    expect(sanitizeCrewName('Sky<script>!')).toBe('Skyscript');
+    expect(sanitizeCrewName('Star-Crew 9 @#$')).toBe('Star-Crew 9 ');
+    expect(sanitizeCrewName('a'.repeat(20))).toHaveLength(12);
+  });
+});
+
+describe('StartScreen', () => {
+  it('renders the heading and tagline', () => {
+    render(<StartScreen onStart={() => {}} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Moon Base Cadets' })).toBeInTheDocument();
+    expect(screen.getByText('Run a Moon base. Survive real solar storms.')).toBeInTheDocument();
+    expect(screen.getByText('Stays on this device only.')).toBeInTheDocument();
+  });
+
+  it('shows the goal, drops the old intro paragraphs, and labels the sites Easier and Harder', () => {
+    render(<StartScreen onStart={() => {}} marsStatus="ready" />);
+    expect(screen.getByText('Your goal: keep your crew safe for 10 days and earn science points.')).toBeInTheDocument();
+    expect(screen.queryByText(/share 10 power units/i)).toBeNull();
+    expect(screen.queryByText(/Life support/)).toBeNull();
+    expect(screen.queryByText(/a sol late/)).toBeNull();
+    const moon = screen.getByRole('radio', { name: /Moon/ });
+    const mars = screen.getByRole('radio', { name: /Mars/ });
+    expect(moon).toHaveAccessibleDescription(/Easier.*Easier: in this game, you get a warning before each storm./);
+    expect(mars).toHaveAccessibleDescription(
+      /Harder.*Harder: in this game, storm warnings from Earth arrive one day late./,
+    );
+    expect(screen.getByRole('radiogroup')).toBeInTheDocument();
+  });
+
+  it('keeps the Coming soon and Loading notes for Mars', () => {
+    const { rerender } = render(<StartScreen onStart={() => {}} />);
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Mars/ })).toBeDisabled();
+    rerender(<StartScreen onStart={() => {}} marsStatus="loading" />);
+    expect(screen.getByText('Loading Mars data…')).toBeInTheDocument();
+  });
+
+  it('offers Continue mission and a New mission button when a save exists', async () => {
+    const user = userEvent.setup();
+    const onResume = vi.fn();
+    const onStart = vi.fn();
+    render(<StartScreen onStart={onStart} resume={{ day: 4, crewName: 'Nova', onResume }} />);
+    expect(screen.queryByRole('button', { name: 'Start mission' })).not.toBeInTheDocument();
+    expect(screen.getByText('Crew Nova is waiting at the base.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Continue mission (Day 4)' }));
+    expect(onResume).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole('button', { name: 'New mission' }));
+    expect(onStart).toHaveBeenCalledWith('Cadets', 'moon');
+  });
+
+  it('keeps 12 characters of a 20-character name and shows the count', async () => {
+    const user = userEvent.setup();
+    render(<StartScreen onStart={() => {}} />);
+    const input = screen.getByLabelText('Crew name (optional)');
+    await user.type(input, 'abcdefghijklmnopqrst');
+    expect(input).toHaveValue('abcdefghijkl');
+    expect(screen.getByText('12/12')).toBeInTheDocument();
+  });
+
+  it('strips disallowed characters as you type', async () => {
+    const user = userEvent.setup();
+    render(<StartScreen onStart={() => {}} />);
+    const input = screen.getByLabelText('Crew name (optional)');
+    await user.type(input, 'A!b@c#-1 ');
+    expect(input).toHaveValue('Abc-1 ');
+  });
+
+  it('calls onStart with the trimmed name, or Cadets when empty', async () => {
+    const user = userEvent.setup();
+    const onStart = vi.fn();
+    const { unmount } = render(<StartScreen onStart={onStart} />);
+    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    expect(onStart).toHaveBeenLastCalledWith('Cadets', 'moon');
+    await user.type(screen.getByLabelText('Crew name (optional)'), '  Moon-9 ');
+    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    expect(onStart).toHaveBeenLastCalledWith('Moon-9', 'moon');
+    unmount();
+  });
+
+  it('starts when Enter is pressed in the field', async () => {
+    const user = userEvent.setup();
+    const onStart = vi.fn();
+    render(<StartScreen onStart={onStart} />);
+    await user.type(screen.getByLabelText('Crew name (optional)'), 'Nova{Enter}');
+    expect(onStart).toHaveBeenCalledWith('Nova', 'moon');
+  });
+
+  it('saves the name and loads it next time', async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<StartScreen onStart={() => {}} />);
+    await user.type(screen.getByLabelText('Crew name (optional)'), 'Nova');
+    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    expect(localStorage.getItem('mbc.crewName')).toBe('Nova');
+    expect(loadCrewName()).toBe('Nova');
+    unmount();
+    render(<StartScreen onStart={() => {}} />);
+    expect(screen.getByLabelText('Crew name (optional)')).toHaveValue('Nova');
+  });
+
+  it('still works when localStorage throws', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    expect(loadCrewName()).toBe('');
+    expect(() => saveCrewName('x')).not.toThrow();
+    const user = userEvent.setup();
+    const onStart = vi.fn();
+    render(<StartScreen onStart={onStart} />);
+    await user.click(screen.getByRole('button', { name: 'Start mission' }));
+    expect(onStart).toHaveBeenCalledWith('Cadets', 'moon');
+  });
+
+  it('shows the word Selected (not colour only) on the chosen campaign card', async () => {
+    const user = userEvent.setup();
+    render(<StartScreen onStart={() => {}} marsStatus="ready" />);
+    const cards = () => [...document.querySelectorAll('.site-card.is-selected')];
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0]).toHaveTextContent('Selected');
+    expect(cards()[0]).toHaveTextContent('Moon');
+    await user.click(screen.getByRole('radio', { name: /Mars/ }));
+    expect(cards()).toHaveLength(1);
+    expect(cards()[0]).toHaveTextContent('Mars');
+    expect(cards()[0].querySelector('.site-dot')).not.toBeNull();
+  });
+});
+
+describe('StartScreen sticky bar', () => {
+  it('puts the Start button in the bar after the crew-name field (tab order)', () => {
+    const { container } = render(<StartScreen onStart={() => {}} />);
+    const bar = container.querySelector('.start-bar');
+    const input = screen.getByLabelText('Crew name (optional)');
+    const button = screen.getByRole('button', { name: 'Start mission' });
+    expect(bar).toContainElement(button);
+    expect(input.compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('keeps Continue and New mission together in the bar, after the crew-name field', () => {
+    const { container } = render(
+      <StartScreen onStart={() => {}} resume={{ day: 2, crewName: 'Nova', onResume: () => {} }} />,
+    );
+    const bar = container.querySelector('.start-bar');
+    const input = screen.getByLabelText('Crew name (optional)');
+    for (const name of ['Continue mission (Day 2)', 'New mission']) {
+      const b = screen.getByRole('button', { name });
+      expect(bar).toContainElement(b);
+      expect(input.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+  });
+});

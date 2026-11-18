@@ -1,0 +1,76 @@
+import { isForecastPlaceholder, SITES } from '../shared/sites.js';
+
+const TIME_WORDS = {
+  day: { now: 'today', next: 'tomorrow', previous: 'yesterday' },
+  sol: { now: 'this sol', next: 'next sol', previous: 'last sol' },
+};
+
+export function carryReasons(site) {
+  const { now, previous } = TIME_WORDS[SITES[site].dayWord];
+  return {
+    air: `Too little air power ${previous} means less air ${now}.`,
+    brownout: `An empty battery ${previous} means less air ${now}.`,
+  };
+}
+
+/** All player-facing rule explanations live here; each readout is at most 15 words. */
+export function explainTurn(input) {
+  const { site, allocation, event, dose, due, airShortfall, recovery, brownout, scienceGained, finalDay, underfunded } =
+    input;
+  const { now, next } = TIME_WORDS[SITES[site].dayWord];
+  const delayedAir = due.some((effect) => effect.meter === 'lifeSupport');
+  const points = `${scienceGained} science ${scienceGained === 1 ? 'point' : 'points'}`;
+  const equipment =
+    allocation.shield > 0 && allocation.science > 0
+      ? 'Shields and science'
+      : allocation.shield > 0
+        ? 'Shields'
+        : 'Science';
+  return {
+    power: underfunded
+      ? allocation.shield > 0 && dose.incoming > 0
+        ? 'The battery ran out, so your shield was weaker.'
+        : 'The battery ran out, so equipment got too little power.'
+      : brownout
+        ? `Battery empty! Air drops ${finalDay ? now : next}.`
+        : allocation.shield + allocation.science === 0
+          ? event.kind === 'CME'
+            ? 'In our game, the CME slowed recharge.'
+            : `The battery recharged ${now}.`
+          : `${event.kind === 'CME' ? 'In our game, the CME slowed recharge.' : 'Battery recharged.'} ${equipment} used reserve power.`,
+    lifeSupport:
+      finalDay && (airShortfall > 0 || brownout)
+        ? airShortfall > 0
+          ? brownout
+            ? `Too little power for air and an empty battery reduced air ${now}.`
+            : `Too little power for air ${now}.`
+          : `An empty battery reduced air ${now}.`
+        : airShortfall > 0
+          ? delayedAir
+            ? `Earlier shortages cost air ${now}. Low air power costs more ${next}.`
+            : allocation.life === 0
+              ? `No power for air! Air will drop ${next}.`
+              : `Only ${allocation.life} ${allocation.life === 1 ? 'unit' : 'units'} went to air, so air will drop ${next}.`
+          : brownout
+            ? `Air will drop ${next} because the battery ran out.`
+            : delayedAir
+              ? `Earlier air or battery shortages cost air ${now}.`
+              : recovery > 0
+                ? `Extra power for air helped restore life support ${now}.`
+                : `Enough power for air kept life support steady ${now}.`,
+    crewHealth:
+      SITES[site].warningDelayDays > 0 && isForecastPlaceholder(event)
+        ? 'If the Sun stays calm, no game dose reaches the crew.'
+        : dose.incoming === 0
+          ? `Quiet skies meant no game dose reached the crew ${now}.`
+          : allocation.shield === 0
+            ? `Shield was off, so all ${dose.incoming} game dose reached the crew.`
+            : `Shields blocked ${dose.blocked} of ${dose.incoming} game dose. ${dose.received} reached the crew.`,
+    science:
+      underfunded && allocation.science > 0
+        ? `Low power meant less science, so you earned ${scienceGained} ${scienceGained === 1 ? 'point' : 'points'} ${now}.`
+        : scienceGained > 0
+          ? `Your ${allocation.science} science ${allocation.science === 1 ? 'unit' : 'units'} earned ${points} ${now}.`
+          : `No power went to science, so no science points were earned ${now}.`,
+  };
+}

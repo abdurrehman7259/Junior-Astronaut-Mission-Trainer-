@@ -31,7 +31,7 @@ All data is stored as snapshots and labelled "Archived (retrieved 2026-11-14)" i
 
 ## Tech stack
 
-TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Hosted on Vercel; the live banner reads NASA DONKI through our own `/api/donki` function, so players' browsers never contact a third party.
+JavaScript (ES modules), React 19, Next.js 15 (Pages Router), zod 4, plain CSS. Vitest and Playwright for tests, oxlint, GitHub Actions CI. Hosted on Vercel; the live banner reads NASA DONKI through our own `/api/donki` function, so players' browsers never contact a third party.
 
 ## Getting started
 
@@ -39,10 +39,10 @@ TypeScript, React 19, Vite 8, zod 4, plain CSS. Vitest and Playwright for tests,
 npm install
 npm run dev      # http://localhost:5173
 npm test         # unit and integration tests
-npm run build    # production build in dist/
+npm run build    # production build (Next.js, .next/)
 ```
 
-Also: `npm run typecheck`, `npm run lint`, `npm run preview`, `npm run e2e` (Playwright), `npm run simulate` (balance report in `reports/`).
+Also: `npm run lint`, `npm start` (serve the build), `npm run e2e` (Playwright), `npm run simulate` (balance report in `reports/`).
 
 ## Project structure
 

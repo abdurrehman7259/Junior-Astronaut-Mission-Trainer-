@@ -2,7 +2,7 @@
 
 Every dataset, source, library, font, icon and sound used by Moon Base Cadets.
 Last updated: Sun 15 Nov 2026. Data is stored as snapshots in `public/data/`. All snapshots are **Archived (retrieved 2026-11-14)**.
-Game numbers (meters, power units, game dose, strength) are game rules and are not listed here as sources; they live in `src/engine/rules.ts`.
+Game numbers (meters, power units, game dose, strength) are game rules and are not listed here as sources; they live in `src/engine/rules.js`.
 
 ## NASA data and services
 
@@ -71,12 +71,9 @@ Exact versions are those installed (`npm ls`, `package-lock.json`).
 
 | Package | Version | Licence |
 |---|---|---|
-| vite | 8.3.8 | MIT |
-| @vitejs/plugin-react | 6.3.0 | MIT |
-| typescript | 7.0.2 | Apache-2.0 |
+| next | 15.5.29 | MIT |
 | vitest | 5.1.0 | MIT |
 | @vitest/coverage-v8 | 5.1.0 | MIT |
-| tsx | 4.23.15 | MIT |
 | jsdom | 31.0.1 | MIT |
 | @playwright/test | 1.65.1 | Apache-2.0 |
 | @testing-library/react | 16.3.3 | MIT |
@@ -92,7 +89,7 @@ Transitive dependencies are listed in `package-lock.json`. Their licences were n
 ## Fonts, icons, images, sounds
 
 - **Fonts:** system font stack only. No web fonts and no font CDN.
-- **Icons:** original inline SVG drawn for this project (`src/ui/components/icons.tsx`, plus the Moon, Mars, antenna and base art in the screens). No icon library.
+- **Icons:** original inline SVG drawn for this project (`src/ui/components/icons.jsx`, plus the Moon, Mars, antenna and base art in the screens). No icon library.
 - **Favicon:** original SVG (`public/favicon.svg`): a simple Moon shape. No agency insignia.
 - **Images:** none loaded. No photos, no NASA imagery, no NASA logos or insignia, and no likeness of any person.
 - **Sounds:** none.

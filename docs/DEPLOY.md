@@ -1,7 +1,7 @@
 # Deploying Moon Base Cadets (Vercel)
 
-The game is a static site plus one small Vercel Function. Vercel builds it with `npm run build`, serves `dist/`, and
-deploys `api/donki.ts` as `/api/donki` automatically. There is no environment variable. The live banner asks our own
+The game is a static site plus one small Vercel Function. Vercel builds it with `npm run build` (Next.js) and
+serves the game page and the `/api/donki` route (`app/api/donki/route.js`, logic in `server/donki.js`) automatically. There is no environment variable. The live banner asks our own
 `/api/donki`, which fetches NASA's keyless DONKI API (`https://ccmc.gsfc.nasa.gov/DONKI-API/`) from Vercel's servers,
 so players' browsers never contact NASA and NASA never sees a player's IP address (D-041). `vercel.json` sets the security headers
 (CSP, HSTS, X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy) on every route.
@@ -11,7 +11,7 @@ so players' browsers never contact NASA and NASA never sees a player's IP addres
 2. Click **Add New…** → **Project**.
 3. Under **Import Git Repository**, find `Junior-Astronaut-Mission-Trainer-` and click **Import**.
    If you don't see it, click **Adjust GitHub App Permissions** and allow access to this repository.
-4. **Framework Preset:** Vite. Leave the Root Directory as `./`.
+4. **Framework Preset:** Next.js. Leave the Root Directory as `./`.
    The build command (`npm run build`) and output directory (`dist`) come from `vercel.json`; leave them as they are.
 5. **Environment Variables:** add none.
 6. Click **Deploy**. Wait for "Congratulations!" (usually 1–2 minutes).
