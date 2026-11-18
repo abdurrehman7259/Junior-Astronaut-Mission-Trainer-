@@ -1,9 +1,6 @@
 /**
  * Moon Base Cadets: shared contracts.
  *
- *
- * Need a change? Ask under OPEN ISSUES in your result file.
- *
  * Every type here must be JSON-serialisable (no functions, Dates, Maps or classes),
  * because GameState is saved to localStorage and snapshots are plain JSON files.
  */

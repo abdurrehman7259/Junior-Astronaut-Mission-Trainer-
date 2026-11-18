@@ -255,7 +255,7 @@ describe('fetchDonkiRecords (mocked network only)', () => {
     },
   );
 
-  // (D-017): a failed half is split again (up to MAX_SPLIT_DEPTH) instead of aborting the run.
+  // D-017: a failed half is split again (up to MAX_SPLIT_DEPTH) instead of aborting the run.
   it.each(['2024-01-01..2024-01-30', '2024-01-31..2024-02-29'])(
     'splits a failed half %s again and keeps every record',
     async (failedHalf) => {

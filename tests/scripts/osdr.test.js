@@ -1,4 +1,4 @@
-// B5 OSDR facts: mocked tests only (no network). (D-020).
+// B5 OSDR facts: mocked tests only (no network), D-020.
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { checkStudyPage, fetchOsdrSnapshot } from '../../scripts/fetch-osdr.js';
